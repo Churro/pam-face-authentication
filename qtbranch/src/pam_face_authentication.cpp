@@ -48,22 +48,15 @@
 #include <stdio.h>
 #include <libintl.h> // gettext()
 #include <X11/Xutil.h> // XDestroyImage()
-/*#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-#include <math.h>
-#include <float.h>
-#include <limits.h>
-#include <time.h>
-#include <ctype.h>
-#include <locale.h>
-#include <X11/Xlib.h>*/
 #include "pam_face_authentication.h"
 #include "pam_face_defines.h"
 #include "webcamImagePaint.h"
 #include "opencvWebcam.h"
 #include "detector.h"
 #include "verifier.h"
+// Check for encryption
+#include <dirent.h>
+#include <string>
 
 //------------------------------------------------------------------------------
 bool msgPipeLiner(char *msg)
@@ -195,6 +188,55 @@ void processEvent(Display* display, Window window,
 }
 
 //------------------------------------------------------------------------------
+// First we check whether the user's homedir is empty.
+// If yes, we assume the homedir to be encrypted and not mounted.
+// If no, we look for a file "README.txt" (like found on Ubuntu 9.10) and
+// check whether this file is a symlink to a path containing "ecryptfs-utils"
+// If yes, we assume the homedir to be encrypted and not mounted.
+// Returns true if the homedir seems to be encrypted and not mounted.
+bool isHomeEncrypted(const char* homedir)
+{
+    char encFile[FILENAME_MAX];
+    char encLink[FILENAME_MAX];
+    int linkNameSize;
+    bool dirEmpty = true;
+    DIR* home;
+    struct dirent* entry;
+    struct stat fileStat;
+
+    home = opendir(homedir);
+    if(home != NULL)
+    {
+        while((entry = readdir(home)) != NULL)
+        {
+            if(std::string(entry->d_name).compare(".") == 0) continue;
+            if(std::string(entry->d_name).compare("..") == 0) continue;
+            //directory is not empty
+            dirEmpty = false;
+            break;
+        }
+        closedir(home);
+    }
+    else return true; // couldn't open homedir
+    
+    if(dirEmpty) return true; // empty so probably encrypted
+    
+    // Looking for a file "README.txt"
+    sprintf(encFile, "%s/README.txt", homedir);
+    
+    if(stat(encFile,&fileStat) < 0) return false; // file seems not to exist
+    if(S_ISLNK(fileStat.st_mode)) return false; // file is not a symlink
+    if((linkNameSize=readlink(encFile,encLink,FILENAME_MAX)) < 0) return false; // could not get the link filename
+    
+    encLink[linkNameSize] = '\0';         // terminate the filename
+    std::string s = encLink;
+    if(s.find("ecryptfs-utils") == std::string::npos)
+      return false; // sequence "ecryptfs-utils" not found in filename
+    
+    return true;
+}
+
+//------------------------------------------------------------------------------
 PAM_EXTERN
 int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** argv)
 {
@@ -245,7 +287,7 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
         return PAM_AUTHINFO_UNAVAIL;
     }
     
-    /* removed Xauth stuff Not Needed for KDM or GDM  ! yay \m/ \m/  \m/ \m/  \m/ \m/  */
+    // removed Xauth stuff Not Needed for KDM or GDM
     ipcStart();
     resetFlags();
 
@@ -262,6 +304,10 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
         display = pamtty;
         if(displayOrig == NULL) setenv("DISPLAY", display, -1);
     }
+
+    // Check if the user's homedir is encrypted
+    if(isHomeEncrypted(userStruct->pw_dir))
+      return PAM_AUTHINFO_UNAVAIL;
 
     while(k < argc)
     {
