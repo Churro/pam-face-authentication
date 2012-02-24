@@ -98,7 +98,7 @@ void faceDetector::runFaceDetector(IplImage* input)
             CvRect* r = (CvRect*)cvGetSeqElem(faces, maxI);
 
             // When looping faces, select the biggest one
-            if(max0 < (r->width * r->height));
+            if(max0 < (r->width * r->height))
             {
                 max0 = (r->width * r->height);
                 maxI = i;
