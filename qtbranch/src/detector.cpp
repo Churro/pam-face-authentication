@@ -31,7 +31,7 @@ using std::bad_alloc;
 
 //------------------------------------------------------------------------------
 detector::detector() : messageIndex(FACE_NOT_ACQUIRED), clippedFace(0), boolClipFace_(0), 
-  totalFaceClipNum_(0), clipFaceCounter_(0), prevlengthEye_(0), inAngle_(0),finishedClipFaceFlag_(0),
+  totalFaceClipNum_(0), clipFaceCounter_(0), prevlengthEye_(0), inAngle_(0),
   lengthEye_(0), widthEyeWindow_(0), heightEyeWindow_(0), 
   finishedClipFaceFlag_(0)
 {
