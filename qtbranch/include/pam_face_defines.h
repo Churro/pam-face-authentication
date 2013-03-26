@@ -1,3 +1,6 @@
+#ifndef _INCL_FACE_DEFINES
+#define _INCL_FACE_DEFINES
+
 /** @file */
 /*
 
@@ -80,4 +83,17 @@ Rewritten
 #define EXIT_GUI 2
 
 #define PFA_PATH "/.pam-face-authentication"
+
+enum MessageIndex {
+    FACE_NOT_ACQUIRED = -1,
+    FACE_TOO_SMALL,
+    FACE_TOO_LARGE,
+    FACE_NOT_FOUND,
+    FACE_NOT_TRACKING,
+    FACE_FOUND,
+    FACE_CAPTURED,
+    FACE_CAPTURE_FINISHED
+};
+
+#endif // _INCL_FACE_DEFINES
 

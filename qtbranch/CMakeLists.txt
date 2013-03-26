@@ -21,6 +21,21 @@ SET( QT_FACETRAINER_SRCS
      ${CMAKE_SOURCE_DIR}/src/qtUtils.cpp
      ${CMAKE_SOURCE_DIR}/src/webcamImagePaint.cpp
    )
+
+SET( QT_FACEVERIFYER_SRCS
+     ${CMAKE_SOURCE_DIR}/src/fv_main.cpp
+     ${CMAKE_SOURCE_DIR}/src/faceVerifier.cpp
+     ${CMAKE_SOURCE_DIR}/src/opencvWebcam.cpp
+     ${CMAKE_SOURCE_DIR}/src/detector.cpp
+     ${CMAKE_SOURCE_DIR}/src/faceDetector.cpp
+     ${CMAKE_SOURCE_DIR}/src/eyesDetector.cpp
+     ${CMAKE_SOURCE_DIR}/src/tracker.cpp
+     ${CMAKE_SOURCE_DIR}/src/verifier.cpp
+     ${CMAKE_SOURCE_DIR}/src/utils.cpp
+     ${CMAKE_SOURCE_DIR}/src/qtUtils.cpp
+     ${CMAKE_SOURCE_DIR}/src/webcamImagePaint.cpp
+   )
+
 SET( QT_FACETRAINER_TRANS ${CMAKE_SOURCE_DIR}/trans/qt_facetrainer_pt_PT.ts
 ${CMAKE_SOURCE_DIR}/trans/qt_facetrainer_ru_RU.ts
 ${CMAKE_SOURCE_DIR}/trans/qt_facetrainer_de.ts
@@ -49,6 +64,21 @@ SET( QT_FACETRAINER_UIS
    )
 
 SET( QT_FACETRAINER_RCS
+     graphics.qrc
+   )
+
+SET( QT_FACEVERIFYER_MOC_HDRS
+     ${CMAKE_SOURCE_DIR}/include/faceVerifier.h
+     ${CMAKE_SOURCE_DIR}/include/aboutBox.h
+   )
+
+SET( QT_FACEVERIFYER_UIS
+     ${CMAKE_SOURCE_DIR}/data/ui/uifiles/faceVerifier.ui
+     ${CMAKE_SOURCE_DIR}/data/ui/uifiles/aboutDialog.ui
+
+   )
+
+SET( QT_FACEVERIFYER_RCS
      graphics.qrc
    )
 
@@ -102,10 +132,12 @@ QT4_ADD_TRANSLATION(QM ${QT_FACETRAINER_TRANS} )
 QT4_ADD_RESOURCES( QT_FACETRAINER_RC_SRCS ${QT_FACETRAINER_RCS} )
 QT4_WRAP_UI( QT_FACETRAINER_UI_HDRS ${QT_FACETRAINER_UIS} )
 QT4_WRAP_CPP( QT_FACETRAINER_MOC_SRCS ${QT_FACETRAINER_MOC_HDRS} )
+QT4_WRAP_UI( QT_FACEVERIFYER_UI_HDRS ${QT_FACEVERIFYER_UIS} )
+QT4_WRAP_CPP( QT_FACEVERIFYER_MOC_SRCS ${QT_FACEVERIFYER_MOC_HDRS} )
 
 INCLUDE_DIRECTORIES( "${CMAKE_SOURCE_DIR}/include" )
 INCLUDE_DIRECTORIES( ${CMAKE_BINARY_DIR} )
-INCLUDE_DIRECTORIES(${OPENCV_INCLUDE_DIR})
+INCLUDE_DIRECTORIES(${OpenCV_INCLUDE_DIR})
 INCLUDE_DIRECTORIES(${PAM_INCLUDE_DIR})
 ADD_LIBRARY(pam_face_authentication SHARED ${PAM_FACE_AUTHENTICATE_SRCS})
 SET_TARGET_PROPERTIES( pam_face_authentication PROPERTIES PREFIX "")
@@ -113,8 +145,12 @@ SET_TARGET_PROPERTIES( pam_face_authentication PROPERTIES PREFIX "")
 ADD_EXECUTABLE( qt-facetrainer ${QT_FACETRAINER_SRCS}
     ${QT_FACETRAINER_MOC_SRCS} ${QT_FACETRAINER_RC_SRCS}
     ${QT_FACETRAINER_UI_HDRS} ${QM} )
-TARGET_LINK_LIBRARIES( pam_face_authentication  ${PAM_LIBRARIES} ${OPENCV_LIBRARIES})
-TARGET_LINK_LIBRARIES( qt-facetrainer ${QT_LIBRARIES} ${OPENCV_LIBRARIES})
+ADD_EXECUTABLE( qt-faceverifyer ${QT_FACEVERIFYER_SRCS}
+    ${QT_FACEVERIFYER_MOC_SRCS} ${QT_FACETRAINER_RC_SRCS}
+    ${QT_FACEVERIFYER_UI_HDRS} ${QM} )
+TARGET_LINK_LIBRARIES( pam_face_authentication  ${PAM_LIBRARIES} ${OpenCV_LIBS})
+TARGET_LINK_LIBRARIES( qt-facetrainer ${QT_LIBRARIES} ${OpenCV_LIBS})
+TARGET_LINK_LIBRARIES( qt-faceverifyer ${QT_LIBRARIES} ${OpenCV_LIBS})
 set(LANGUAGES pt_PT ru_RU es fr it nl sv tr de uk)
 
 if( UNIX AND NOT APPLE )
@@ -164,6 +200,13 @@ INSTALL(
     pam_face_authentication
     DESTINATION
     ${PAM_MODULES_LOCATION}
+)
+
+INSTALL(
+    TARGETS
+    qt-faceverifyer
+    DESTINATION
+    ${BINDIR}
 )
 
 INSTALL(

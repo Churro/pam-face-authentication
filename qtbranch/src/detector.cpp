@@ -26,11 +26,12 @@
 #define eyeTopPad 30
 #define eyeBottomPad 120
 
+#define DEBUG
 using std::bad_alloc;
 
 //------------------------------------------------------------------------------
-detector::detector() : messageIndex(-1), clippedFace(0), boolClipFace_(0), 
-  totalFaceClipNum_(0), clipFaceCounter_(0), prevlengthEye_(0), inAngle_(0),
+detector::detector() : messageIndex(FACE_NOT_ACQUIRED), clippedFace(0), boolClipFace_(0), 
+  totalFaceClipNum_(0), clipFaceCounter_(0), prevlengthEye_(0), inAngle_(0),finishedClipFaceFlag_(0),
   lengthEye_(0), widthEyeWindow_(0), heightEyeWindow_(0), 
   finishedClipFaceFlag_(0)
 {
@@ -71,6 +72,7 @@ IplImage* preprocess(IplImage* img, CvPoint plefteye, CvPoint prighteye)
   cvResize(imgDest, face, CV_INTER_LINEAR);
   cvResetImageROI(imgDest);
     
+  cvReleaseImage( &imgDest);
   return face;
 }
 
@@ -90,6 +92,18 @@ IplImage* detector::clipFace(IplImage* inputImage)
 }
 
 //------------------------------------------------------------------------------
+void detector::updateEyeTracker( tracker &eye, CvPoint &centerPoint, IplImage *gray)
+{
+    IplImage* grayIm1 = cvCreateImage(cvSize(gray->width/2, gray->height), 8, 1);
+    cvSetImageROI(gray, cvRect(0, 0, (gray->width)/2, gray->height) );
+    cvResize(gray, grayIm1, CV_INTER_LINEAR);
+    cvResetImageROI(gray);
+    eye.setModel(grayIm1);
+    eye.anchorPoint = centerPoint;
+    cvReleaseImage(&grayIm1);
+
+}
+//------------------------------------------------------------------------------
 int detector::runDetector(IplImage* input)
 {
   static int flag;
@@ -101,18 +115,23 @@ int detector::runDetector(IplImage* input)
   CvPoint temp, leftEyePTemp, leftEyePointRelativeTemp;
   CvPoint rightEyePTemp, rightEyePointRelativeTemp;
 
-  messageIndex = -1;
+  messageIndex = FACE_NOT_ACQUIRED;
   if(input == 0) return -1;
+  CvSize imageSize = cvGetSize(input);
+  int minFaceWidth = imageSize.width * .3;
+  int maxFaceWidth = imageSize.width * .9;
+  int minFaceHeight = imageSize.height * .4;
+  int maxFaceHeight = imageSize.height * .9;
 
-  // Runs the face detector onto the input image
+  // Runs the face detector onto the input Face
   runFaceDetector(input);
 
   if(checkFaceDetected() == true)
   {
-    if(faceInformation.Width < 120 || faceInformation.Height < 120)
-      messageIndex = 0; // Come closer to the camera
-    else if(faceInformation.Width > 200 || faceInformation.Height > 200)
-      messageIndex = 1; // Go farer away from the camera
+    if(faceInformation.Width < minFaceWidth || faceInformation.Height < minFaceHeight)
+      messageIndex = FACE_TOO_SMALL; // Come closer to the camera
+    else if(faceInformation.Width > maxFaceWidth || faceInformation.Height > maxFaceHeight)
+      messageIndex = FACE_TOO_LARGE; // Go farer away from the camera
     else
     {
       IplImage* clipFaceImage = clipDetectedFace(input);
@@ -154,27 +173,14 @@ int detector::runDetector(IplImage* input)
         widthEyeWindow_ = gray->width/2;
         heightEyeWindow_ = gray->height;
 
-        IplImage* grayIm1 = cvCreateImage(cvSize(gray->width/2, gray->height), 8, 1);
-        cvSetImageROI(gray, cvRect(0, 0, (gray->width)/2, gray->height) );
-        cvResize(gray, grayIm1, CV_INTER_LINEAR);
-        cvResetImageROI(gray);
-        leftEye_.setModel(grayIm1);
-        leftEye_.anchorPoint = leftEyePointRelative_;
+        updateEyeTracker( leftEye_, leftEyePointRelative_, gray);
+        updateEyeTracker( rightEye_, rightEyePointRelative_, gray);
 
-        IplImage* grayIm2 = cvCreateImage(cvSize(gray->width/2, gray->height), 8, 1);
-        cvSetImageROI(gray,cvRect(gray->width/2, 0, gray->width/2, gray->height) );
-        cvResize(gray, grayIm2, CV_INTER_LINEAR);
-        cvResetImageROI(gray);
-        rightEye_.setModel(grayIm2);
-        rightEye_.anchorPoint = rightEyePointRelative_;
-
-        cvReleaseImage(&grayIm1);
-        cvReleaseImage(&grayIm2);
         cvReleaseImage(&gray);
       }
       else
       {
-        messageIndex = 2; // Unable to detect your face
+        messageIndex = FACE_NOT_TRACKING; // Face, but no Eyes.
       }
       
       cvReleaseImage(&clipFaceImage);
@@ -183,7 +189,7 @@ int detector::runDetector(IplImage* input)
   }
   else
   {
-    if(flag != 1) messageIndex = 2; // Detected the face, but not the eyes
+    if(flag != 1) messageIndex = FACE_NOT_FOUND; // No face detected.
   }
 
   if(flag == 1)
@@ -238,8 +244,8 @@ int detector::runDetector(IplImage* input)
        ly = 0;
     }
     
-    if( (lx + newWidth) > IMAGE_WIDTH) newWidthL = IMAGE_WIDTH - lx;
-    if( (ly +newHeight) > IMAGE_HEIGHT) newHeightL = IMAGE_HEIGHT - ly;
+    if( (lx + newWidth) > input->width) newWidthL = input->width - lx;
+    if( (ly +newHeight) > input->height) newHeightL = input->height - ly;
 
     IplImage* grayIm1 = cvCreateImage(cvSize(newWidthL, newHeightL), 8, 1);
     cvSetImageROI(dstimg, cvRect(lx, ly, newWidthL, newHeightL) );
@@ -261,8 +267,8 @@ int detector::runDetector(IplImage* input)
       rx = 0;
     }
     
-    if( (rx+newWidth) > IMAGE_WIDTH) newWidthR = IMAGE_WIDTH - rx;
-    if( (ry+newHeight) > IMAGE_HEIGHT) newHeightR = IMAGE_HEIGHT - ry;
+    if( (rx+newWidth) > input->width) newWidthR = input->width - rx;
+    if( (ry+newHeight) > input->height) newHeightR = input->height - ry;
 
     IplImage *grayIm2 = cvCreateImage(cvSize(newWidthR, newHeightR), 8, 1);
     cvSetImageROI(dstimg,cvRect(rx, ry, newWidthR, newHeightR));
@@ -294,7 +300,7 @@ int detector::runDetector(IplImage* input)
 
     if(pow( (angle2 - angle), 2) < 300 && v1 < 140 && v2 < 144 && lengthTemp > 1)
     {
-      messageIndex = 4;
+      messageIndex = FACE_FOUND;
       leftEyeP_ = leftEyePTemp;
       rightEyeP_  = rightEyePTemp;
       cv2DRotationMatrix(centre, -currentAngle, 1.0, rotateMatrix);
@@ -324,7 +330,9 @@ int detector::runDetector(IplImage* input)
         + pow(eyesInformation.RE.x - eyesInformation.LE.x, 2));
 
       prevlengthEye_ = eyesInformation.Length;
-      //cvLine(input, eyesInformation.LE, eyesInformation.RE, cvScalar(0,255,0), 4);
+#ifdef DEBUG
+      cvLine(input, eyesInformation.LE, eyesInformation.RE, cvScalar(0,255,0), 4);
+#endif
     }
     
     cvReleaseImage(&dstimg);
@@ -335,17 +343,16 @@ int detector::runDetector(IplImage* input)
 
   if(checkEyeDetected() == true && checkFaceDetected() == true && boolClipFace_ == true)
   {
-    if(clipFaceCounter_ > 0)
+    if(clipFaceCounter_ < totalFaceClipNum_)
     {
-      clippedFace[totalFaceClipNum_ - clipFaceCounter_] = clipFace(input);
-      clipFaceCounter_--;
-      messageIndex = 5;
+      clippedFace[clipFaceCounter_] = clipFace(input);
+      clipFaceCounter_++;
+      messageIndex = FACE_CAPTURED;
       /* sprintf(messageCaptureMessage, "Captured %d/%d faces.", 
           totalFaceClipNum - clipFaceCounter_+1, totalFaceClipNum); */
-      if(clipFaceCounter_ == 0)
+      if(clipFaceCounter_ == totalFaceClipNum_)
       {
-        messageIndex = 6; // Image capturing finished
-        finishedClipFaceFlag_ = 1;
+        messageIndex = FACE_CAPTURE_FINISHED; // Image capturing finished
       }
     }
   }
@@ -362,9 +369,8 @@ int detector::getClipFaceCounter()
 //------------------------------------------------------------------------------
 int detector::finishedClipFace()
 {
-  if(totalFaceClipNum_ > 0 && finishedClipFaceFlag_ == 1)
+  if(totalFaceClipNum_ > 0 && clipFaceCounter_ >= totalFaceClipNum_  )
   {
-    finishedClipFaceFlag_ = 0;
     return 1;
   }
   else return 0;
@@ -392,7 +398,7 @@ void detector::startClipFace(int num)
   }
   
   totalFaceClipNum_ = num;
-  clipFaceCounter_ = num;
+  clipFaceCounter_ = 0;
   boolClipFace_ = true;
 }
 
@@ -400,9 +406,8 @@ void detector::startClipFace(int num)
 void detector::stopClipFace()
 {
   totalFaceClipNum_ = 0;
-  clipFaceCounter_ = 0;
+  clipFaceCounter_ = totalFaceClipNum_;
   boolClipFace_ = 0;
-  finishedClipFaceFlag_ = 0;
   
   for(int i = 0; i < totalFaceClipNum_; i++)
   {
@@ -415,39 +420,13 @@ void detector::stopClipFace()
 //------------------------------------------------------------------------------
 int detector::detectorSuccessful()
 {
-  if(messageIndex == 4) return 1;
-
-  return 0;
+  return (messageIndex == FACE_FOUND);
 }
 
 //------------------------------------------------------------------------------
 int detector::queryMessage()
 {
-//
-//    char *message0="Please come closer to the camera.";
-//    char *message1="Please go little far from the camera.";
-//    char *message2="Unable to Detect Your Face.";
-//    char *message3="Tracker lost, trying to reinitialize.";
-//    char *message4="Tracking in progress.";
-//    char *message6="Capturing Image Finished.";
-//
-//    if (messageIndex==-1)
-//        return 0;
-//    else if (messageIndex==0)
-//        return message0;
-//    else if (messageIndex==1)
-//        return message1;
-//    else if (messageIndex==2)
-//        return message2;
-//    else if (messageIndex==3)
-//        return message3;
-//    else if (messageIndex==4)
-//        return message4;
-//    else if (messageIndex==5)
-//        return messageCaptureMessage;
-//    else if (messageIndex==6)
-//        return message6;
-//    return 0;
   return messageIndex;
 }
+// vim: set ts:2 sw:2 et ai
 

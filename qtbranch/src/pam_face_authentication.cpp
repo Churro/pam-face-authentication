@@ -118,9 +118,9 @@ void ipcStart()
 //------------------------------------------------------------------------------
 void writeImageToMemory(IplImage* img, char* shared)
 {
-    for(int n = 0; n < IMAGE_HEIGHT; n++)
+    for(int n = 0; n < img->height; n++)
     {
-        for(int m = 0; m < IMAGE_WIDTH; m++)
+        for(int m = 0; m < img->width; m++)
         {
             CvScalar s = cvGet2D(img, n, m);
             int val3 = (uchar)s.val[2];
@@ -138,8 +138,8 @@ void writeImageToMemory(IplImage* img, char* shared)
 XImage* CreateTrueColorImage(Display* display, Visual* visual, 
   char* image, int width, int height, IplImage* img)
 {
-    int max = (IMAGE_WIDTH > IMAGE_HEIGHT) ? IMAGE_WIDTH:IMAGE_HEIGHT;
-    int wh = (IMAGE_WIDTH > IMAGE_HEIGHT) ? 1 : 0;
+    int max = (img->width > img->height) ? img->width:img->height;
+    int wh = (img->width > img->height) ? 1 : 0;
 
     char* image32=(char *)malloc(width*height*4);
     char* p = image32;
@@ -148,7 +148,7 @@ XImage* CreateTrueColorImage(Display* display, Visual* visual,
     {
         for(int i = 0; i < width; i++)
         {
-            if((j < IMAGE_HEIGHT) && (i < IMAGE_WIDTH))
+            if((j < img->height) && (i < img->width))
             {
                 CvScalar s = cvGet2D(img, j, i);
                 int val3 = (uchar)s.val[2];
@@ -177,8 +177,8 @@ XImage* CreateTrueColorImage(Display* display, Visual* visual,
 void processEvent(Display* display, Window window, 
   int width, int height, IplImage* img, int s)
 {
-    int xoffset = (DisplayWidth(display, s) - IMAGE_WIDTH)/2;
-    int yoffset = (DisplayHeight(display, s) - IMAGE_HEIGHT)/2;
+    int xoffset = (DisplayWidth(display, s) - img->width)/2;
+    int yoffset = (DisplayHeight(display, s) - img->height)/2;
     // XMoveWindow(display, window, xoffset, yoffset);
     
     Visual* visual = DefaultVisual(display, 0);
@@ -317,14 +317,14 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
             char* word = NULL;
             char* word1 = NULL;
             
-            sprintf(X_lock, "/tmp/.X%s-lock", strtok((char*)&display[1], "."));
+            snprintf(X_lock, 300, "/tmp/.X%s-lock", strtok((char*)&display[1], "."));
             
             xlock = fopen(X_lock, "r");
             fgets(cmdline, 300, xlock);
             fclose(xlock);
             
             word1 = strtok(cmdline,"  \n");
-            sprintf(X_lock, "/proc/%s/cmdline", word1);
+            snprintf(X_lock, 300,  "/proc/%s/cmdline", word1);
             xlock = fopen(X_lock, "r");
             fgets(X_lock , 300, xlock);
             fclose(xlock);
@@ -355,7 +355,7 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
                 if(pw != NULL && xauthpathOrig == NULL)
                 {  
                     char xauthPathString[300];
-                    sprintf(xauthPathString, "%s/.Xauthority", pw->pw_dir);
+                    snprintf(xauthPathString, 300, "%s/.Xauthority", pw->pw_dir);
                     setenv("XAUTHORITY",xauthPathString,-1);
                 }
             }
@@ -364,8 +364,8 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
             if(displayScreen != NULL)
             {
                 s = DefaultScreen(displayScreen);
-                int xoffset = (DisplayWidth(displayScreen,s) - IMAGE_WIDTH)/2;
-                int yoffset = (DisplayHeight(displayScreen,s) - IMAGE_HEIGHT)/2;
+                int xoffset = (DisplayWidth(displayScreen,s) - width)/2;
+                int yoffset = (DisplayHeight(displayScreen,s) - height)/2;
 
                 // printf("%d  %d\n",xoffset ,yoffset);
 
@@ -417,7 +417,7 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
     // Don't Gettext this because kgreet_plugin relies on this :)
     send_msg(pamh, (char*)"Face Verification Pluggable Authentication Module Started");
     int val = newVerifier->verifyFace(zeroFrame);
-    if(val == 2)
+    if(val == -1)
     {
         send_msg(pamh, gettext("Biometrics model has not been generated for the user. \
           Use qt-facetrainer to create the model."));
@@ -460,7 +460,7 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
                     if(im != 0)
                     {
                         int val = newVerifier->verifyFace(im);
-                        if(val == 1)
+                        if(val > 0)
                         {
                             *commAuth = STOPPED;
                             // cvSaveImage("/home/rohan/new1.jpg",newDetector.clipFace(queryImage));

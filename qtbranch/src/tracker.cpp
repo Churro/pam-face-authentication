@@ -26,13 +26,17 @@ tracker::tracker() : trackerModelFeatureSizeX(0), trackerModelFeatureSizeY(0),
   trackerModelFeatureINTEGRALX(0), trackerModelFeatureINTEGRALY(0),
   stateVariableScaleX(0), stateVariableScaleY(0),
   stateVariableTranslateX(0), stateVariableTranslateY(0),
-  lastImageWidth(0), lastImageHeight(0)
+  lastImageWidth(0), lastImageHeight(0), lastDifference1(0),lastDifference2(0)
 {
 }
 
 //------------------------------------------------------------------------------
 tracker::~tracker()
 {
+  if(trackerModelFeatureVARIANCEY != 0) delete[] trackerModelFeatureVARIANCEY;
+  if(trackerModelFeatureVARIANCEX != 0) delete[] trackerModelFeatureVARIANCEX;
+  if(trackerModelFeatureINTEGRALX != 0) delete[] trackerModelFeatureINTEGRALX;
+  if(trackerModelFeatureINTEGRALY != 0) delete[] trackerModelFeatureINTEGRALY;
 }
 
 //------------------------------------------------------------------------------
@@ -168,9 +172,15 @@ double* tracker::calculateFeature(IplImage* input, int flag, int varorintegral)
     var[i] -= varSum;
   }
 
-  //  delete [] integral;
-  if(varorintegral == 1) return integral;
-    else return var;
+  if(varorintegral == 1)
+  {
+      delete [] var;
+      return integral;
+  }
+  else {
+      delete [] integral;
+      return var;
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -341,6 +351,7 @@ double tracker::runGridSearch(IplImage* gray, int size, int flag, double* d,
 
   cvReleaseImage(&grayNew);
   delete [] feature;
+  delete [] feature1;
 
   return v;
 }
@@ -354,7 +365,7 @@ double tracker::difference(double* feature, double* featureModel, int size,
 
   for(i = 0; i < size; i++)
   {
-    if((px*i +py) >= 0 && (px*i +py) < size)
+    if((px*i +py) >= 0 && (px*i +py) < (size-1))
     {
       int k = floor(px*i + py);
       double decimal = px*i + py - k;

@@ -38,8 +38,10 @@
 #include "qtUtils.h"
 #include "pam_face_defines.h"
 
+using namespace cv;
+
 //------------------------------------------------------------------------------
-faceTrainer::faceTrainer(QWidget* parent) : QMainWindow(parent)
+faceTrainer::faceTrainer(QWidget* parent) : QMainWindow(parent), timerId(0)
 {
     ui.setupUi(this);
     QDesktopWidget* desktop = QApplication::desktop();
@@ -81,7 +83,7 @@ faceTrainer::~faceTrainer()
 void faceTrainer::showTab1()
 {
     killTimer(timerId);
-    webcam.stopCamera();
+    webcam.release();
 
     ui.stkWg->setCurrentIndex(0);
 }
@@ -89,7 +91,7 @@ void faceTrainer::showTab1()
 //------------------------------------------------------------------------------
 void faceTrainer::showTab2()
 {
-    if(webcam.startCamera() == true)
+    if(webcam.open(0) == true)
     {
         ui.stkWg->setCurrentIndex(1);
         populateQList();
@@ -125,7 +127,7 @@ void faceTrainer::populateQList()
     for(int i = 0; i < faceSetStruct->count; i++)
     {
         char setName[100];
-        sprintf(setName, "Set %d", i+1);
+        snprintf(setName, 100, "Set %d", i+1);
         // ui.lv_thumbnails->setIconSize(QSize(60, 60));
         
         QListWidgetItem *item = new QListWidgetItem(setName, ui.lv_thumbnails);
@@ -165,12 +167,11 @@ void faceTrainer::about()
 //------------------------------------------------------------------------------
 void faceTrainer::showAdvDialog()
 {
-    faceTrainerAdvSettings* newDialog = new faceTrainerAdvSettings(
-        this, newVerifier.configDirectory);
-    newDialog->initConfig();
-    newDialog->sT(&webcam, &newDetector, &newVerifier);
-    newDialog->exec();
-    delete newDialog;
+    faceTrainerAdvSettings newDialog( webcam, this,
+        newVerifier.configDirectory);
+    newDialog.initConfig();
+    newDialog.sT(&newDetector, &newVerifier);
+    newDialog.exec();
 }
 
 //------------------------------------------------------------------------------
@@ -180,31 +181,20 @@ void faceTrainer::verify()
     struct dirent* de = NULL;
 
     DIR* d = opendir("/home/notroot/train/");
-    while(de = readdir(d))
+    while((de = readdir(d)))
     {
         if( !((strcmp(de->d_name, ".") == 0) 
            || (strcmp(de->d_name, "..") == 0)) )
         {
             char fullPath[300];
-            sprintf(fullPath,"%s/%s","/home/notroot/train",de->d_name);
+            snprintf(fullPath, 300, "%s/%s","/home/notroot/train",de->d_name);
             IplImage* temp = cvLoadImage(fullPath, 1);
             printf("%s\n", fullPath);
-            if(newVerifier.verifyFace(temp) == true) printf("%s\n", fullPath);
+            if(newVerifier.verifyFace(temp) > 0) printf("%s\n", fullPath);
         }
     }
 
-    //IplImage* queryImage = webcam.queryFrame();
-    //newVerifier.verifyFace(queryImage);
 }
-
-/*
-//------------------------------------------------------------------------------
-void faceTrainer::butClick()
-{
-    IplImage* queryImage = webcam.queryFrame();
-    newVerifier.verifyFace(newDetector.clipFace(queryImage));
-}
-*/
 
 //------------------------------------------------------------------------------
 void faceTrainer::removeSelected()
@@ -254,21 +244,25 @@ QString faceTrainer::getQString(int messageIndex)
         totalFaceClipNum - clipFaceCounter + 1,
         totalFaceClipNum);*/
 
-    if (messageIndex == -1) return QString("");
-    else if (messageIndex == 0)
-        return QString(tr("Please come closer to the camera."));
-    else if (messageIndex == 1)
-        return QString(tr("Please go little far from the camera."));
-    else if (messageIndex == 2)
-        return QString(tr("Unable to Detect Your Face."));
-    else if (messageIndex == 3)
-        return QString(tr("Tracker lost, trying to reinitialize."));
-    else if (messageIndex == 4)
-        return QString(tr("Tracking in progress."));
-    else if (messageIndex == 5)
-        return QString(tr("Captured %1 / %2 faces.").arg(14-newDetector.getClipFaceCounter()).arg(13));
-    else if (messageIndex == 6)
-        return QString(tr("Capturing Image Finished."));
+    switch (messageIndex ) {
+        case FACE_TOO_SMALL:
+            return QString(tr("Please come closer to the camera."));
+        case FACE_TOO_LARGE:
+            return QString(tr("Please go little far from the camera."));
+        case FACE_NOT_FOUND:
+            return QString(tr("Unable to Detect Your Face."));
+        case FACE_NOT_TRACKING:
+            return QString(tr("Tracker lost, trying to reinitialize."));
+        case FACE_FOUND:
+            return QString(tr("Tracking in progress."));
+        case FACE_CAPTURED:
+            return QString(tr("Captured %1 / %2 faces.").arg(FACE_COUNT-newDetector.getClipFaceCounter()+1).arg(FACE_COUNT));
+        case FACE_CAPTURE_FINISHED:
+            return QString(tr("Capturing Image Finished."));
+        case FACE_NOT_ACQUIRED:
+        default:
+            return QString("");
+	}
 
     return 0;
 }
@@ -283,26 +277,26 @@ void faceTrainer::setIbarText(QString message)
 void faceTrainer::timerEvent(QTimerEvent*)
 {
     static webcamImagePaint newWebcamImagePaint;
+    Mat img;
     
-    IplImage* queryImage = webcam.queryFrame();
-    newDetector.runDetector(queryImage);
+    webcam >> img;
+    IplImage queryImage(img);
+
+    if (newDetector.runDetector(&queryImage) == -1 )
+        return; // Try again another day
 
     setIbarText(getQString(newDetector.queryMessage()));
-    //if(newDetector.checkEyeDetected()==1)
-    //newVerifier.verifyFace(newDetector.clipFace(queryImage));
-    //this works captureClick();
-    //double t = (double)cvGetTickCount();
     
-    newWebcamImagePaint.paintCyclops(queryImage, 
+    newWebcamImagePaint.paintCyclops(&queryImage, 
         newDetector.eyesInformation.LE, newDetector.eyesInformation.RE);
-    newWebcamImagePaint.paintEllipse(queryImage, 
+    newWebcamImagePaint.paintEllipse(&queryImage, 
         newDetector.eyesInformation.LE, newDetector.eyesInformation.RE);
 
-    /* cvLine(queryImage, 
+    /* cvLine(&queryImage, 
           newDetector.eyesInformation.LE, newDetector.eyesInformation.RE, 
           cvScalar(0,255,0), 4);*/
-    // newVerifier.verifyFace(newDetector.clipFace(queryImage));
-    QImage* qm = QImageIplImageCvt(queryImage);
+    // newVerifier.verifyFace(newDetector.clipFace(&queryImage));
+    QImage* qm = QImageIplImageCvt(&queryImage);
 
     if(newDetector.finishedClipFace() == true)
     {
@@ -321,6 +315,6 @@ void faceTrainer::timerEvent(QTimerEvent*)
     // sleep(1);
 
     delete qm;
-    cvReleaseImage(&queryImage);
 }
+// vim: set ts:4 sw:4 et ai
 

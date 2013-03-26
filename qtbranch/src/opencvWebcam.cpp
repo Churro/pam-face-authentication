@@ -22,7 +22,7 @@
 #include "pam_face_defines.h"
 
 //------------------------------------------------------------------------------
-opencvWebcam::opencvWebcam()
+opencvWebcam::opencvWebcam(): capture_(0)
 {
 }
 
@@ -58,25 +58,12 @@ void opencvWebcam::stopCamera()
 //------------------------------------------------------------------------------
 IplImage* opencvWebcam::queryFrame()
 {
-    static IplImage* originalFrame = 0;
-    IplImage* frame = 0;
-    IplImage* frame_copy = 0;
-
-    originalFrame = cvQueryFrame(capture_);
+    IplImage* originalFrame = cvQueryFrame(capture_);
     if(!originalFrame) return 0;
     
-    frame = cvCreateImage(cvSize(IMAGE_WIDTH, IMAGE_HEIGHT), 
-      IPL_DEPTH_8U, originalFrame->nChannels);
-    cvResize(originalFrame, frame, CV_INTER_LINEAR);
-    if(!frame) return 0;
-
-    frame_copy = cvCreateImage(cvSize(frame->width, frame->height),
-      IPL_DEPTH_8U, frame->nChannels);
-    if(frame->origin == IPL_ORIGIN_TL) cvCopy(frame, frame_copy, 0);
-      else cvFlip(frame, frame_copy, 0);
+    if(originalFrame->origin != IPL_ORIGIN_TL)
+      cvFlip(originalFrame, NULL, 0);
     
-    cvReleaseImage(&frame);
-
-    return frame_copy;
+    return originalFrame;
 }
 

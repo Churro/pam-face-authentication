@@ -290,7 +290,7 @@ double LBPCustomDiff(    CvMat* model,    CvMat* test, CvMat * weight)
 void saveMace(mace* maceFilter, const char* path)
 {
     char fullpath[300];
-    sprintf(fullpath,"%s/%s", path,maceFilter->maceFilterName);
+    snprintf(fullpath, 300, "%s/%s", path,maceFilter->maceFilterName);
     // printf("%s \n",fullpath);
     CvFileStorage *fs;
     fs = cvOpenFileStorage( fullpath, 0, CV_STORAGE_WRITE );
@@ -537,7 +537,7 @@ void createSQI(IplImage * im,IplImage *final)
 int file_exists(const char* filename)
 {
     FILE* file;
-    if (file=fopen(filename,"r"))
+    if ((file=fopen(filename,"r")) != 0)
     {
         fclose(file);
         return 1;
@@ -550,7 +550,7 @@ int file_exists(const char* filename)
 void setConfig(config *configuration,char * configDirectory)
 {
     char maceConfig[300];
-    sprintf(maceConfig,"%s/mace.xml", configDirectory);
+    snprintf(maceConfig, 300, "%s/mace.xml", configDirectory);
     CvFileStorage* fs ;
     fs = cvOpenFileStorage( maceConfig, 0, CV_STORAGE_WRITE );
     // printf("%e \n",configuration->percentage);
@@ -562,7 +562,7 @@ config * getConfig(char *configDirectory)
 {
     config * newConfig=new config;
     char maceConfig[300];
-    sprintf(maceConfig,"%s/mace.xml", configDirectory);
+    snprintf(maceConfig, 300, "%s/mace.xml", configDirectory);
     CvFileStorage * fileStorage;
     fileStorage = cvOpenFileStorage(maceConfig, 0, CV_STORAGE_READ );
     newConfig->percentage=cvReadRealByName( fileStorage, 0, "percentage", 1);

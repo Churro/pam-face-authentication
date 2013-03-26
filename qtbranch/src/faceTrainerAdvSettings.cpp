@@ -27,11 +27,12 @@
 #include "faceTrainerAdvSettings.h"
 
 using std::string;
+using namespace cv;
 
 //------------------------------------------------------------------------------
-faceTrainerAdvSettings::faceTrainerAdvSettings(QWidget* parent, 
-    const string configDir)
-    : QDialog(parent), configDirectory(configDir)
+faceTrainerAdvSettings::faceTrainerAdvSettings(cv::VideoCapture &wc,QWidget* parent, 
+    const string configDir )
+    : QDialog(parent), configDirectory(configDir), webcam(wc)
 {
     ui.setupUi(this);
 
@@ -48,9 +49,8 @@ faceTrainerAdvSettings::~faceTrainerAdvSettings()
 }
 
 //------------------------------------------------------------------------------
-void faceTrainerAdvSettings::sT(opencvWebcam* wc, detector* nd, verifier* nv)
+void faceTrainerAdvSettings::sT(detector* nd, verifier* nv)
 {
-    webcam = wc;
     newDetector = nd;
     newVerifier = nv;
     startTimer(20);
@@ -109,15 +109,16 @@ void faceTrainerAdvSettings::restoreDefaults()
 //------------------------------------------------------------------------------
 void faceTrainerAdvSettings::testRecognition()
 {
-    IplImage* queryImage = webcam->queryFrame();
-    IplImage* test = newDetector->clipFace(queryImage);
+    Mat img;
+    webcam >> img;
+    IplImage queryImage(img);
+    IplImage* test = newDetector->clipFace(&queryImage);
         
-    if(newVerifier->verifyFace(test) == true)
+    if(newVerifier->verifyFace(test) > 0)
         ui.result->setText(QString(tr("Yes")));
     else
         ui.result->setText(QString(tr("No")));
         
-    cvReleaseImage(&queryImage);
     cvReleaseImage(&test);
 }
 
@@ -126,28 +127,29 @@ void faceTrainerAdvSettings::timerEvent(QTimerEvent*)
 {
     static webcamImagePaint newWebcamImagePaint;
     
-    IplImage* queryImage = webcam->queryFrame();
-    newDetector->runDetector(queryImage);
+    Mat img;
+    webcam >> img;
+    IplImage queryImage(img);
+    newDetector->runDetector(&queryImage);
     
     // if(newDetector->checkEyeDetected() == true)
     // newVerifier->verifyFace(newDetector->clipFace(queryImage));
     // this works captureClick();
     // double t = (double)cvGetTickCount();
     
-    newWebcamImagePaint.paintCyclops(queryImage, 
+    newWebcamImagePaint.paintCyclops(&queryImage, 
         newDetector->eyesInformation.LE, newDetector->eyesInformation.RE);
-    newWebcamImagePaint.paintEllipse(queryImage, 
+    newWebcamImagePaint.paintEllipse(&queryImage, 
         newDetector->eyesInformation.LE, newDetector->eyesInformation.RE);
 
-    /* cvLine(queryImage, 
+    /* cvLine(&queryImage, 
         newDetector->eyesInformation.LE, newDetector->eyesInformation.RE, 
         cvScalar(0,255,0), 4);*/
     // newVerifier->verifyFace(newDetector->clipFace(queryImage));
     
-    QImage* qm = QImageIplImageCvt(queryImage);
+    QImage* qm = QImageIplImageCvt(&queryImage);
     setQImageWebcam(qm);
     cvWaitKey(1);
-    cvReleaseImage(&queryImage);
     delete qm;
 }
 

@@ -81,8 +81,6 @@ cvReleaseMat(&rotateMatrix);
 }
 void  webcamImagePaint::paintCyclops(IplImage *image,CvPoint leftEye,CvPoint rightEye)
 {
-    IplImage* imgDest = cvCreateImage( cvSize(image->width,image->height),8,3);
-    cvCopy(image,imgDest);
 
     double yvalue=rightEye.y-leftEye.y;
     double xvalue=rightEye.x-leftEye.x;
@@ -145,7 +143,10 @@ void  webcamImagePaint::paintCyclops(IplImage *image,CvPoint leftEye,CvPoint rig
     CvLineIterator iterator1;
     CvLineIterator iterator2;
     if (!(p1LeftTop.y>=0 && p1LeftTop.y<image->height && p1LeftTop.x>=0 && p1LeftTop.x<image->width &&p1LeftBottom.y>=0 && p1LeftBottom.y<image->height && p1LeftBottom.x>=0 && p1LeftBottom.x<image->width &&p1RightTop.y>=0 && p1RightTop.y<image->height && p1RightTop.x>=0 && p1RightTop.x<image->width  &&p1RightBottom.y>=0 && p1RightBottom.y<image->height && p1RightBottom.x>=0 && p1RightBottom.x<image->width))
+    {
+        cvReleaseMat(&rotateMatrix);
         return;
+    }
 
     int count1 = cvInitLineIterator( image, p1LeftTop, p1LeftBottom, &iterator1, 8, 0 );
     int count2 = cvInitLineIterator( image, p1RightTop, p1RightBottom, &iterator2, 8, 0 );
@@ -318,7 +319,6 @@ void  webcamImagePaint::paintCyclops(IplImage *image,CvPoint leftEye,CvPoint rig
         }
 
     }
-cvReleaseImage(&imgDest);
 cvReleaseMat(&rotateMatrix);
     //cvLine(image,p1LeftTop, p1LeftBottom, cvScalar(0,122,0),1,CV_AA,0);
 //	cvLine(image,p1RightTop, p1RightBottom, cvScalar(0,122,0),1,CV_AA,0);

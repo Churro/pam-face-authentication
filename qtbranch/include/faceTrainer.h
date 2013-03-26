@@ -1,6 +1,8 @@
 #ifndef _INCL_FACE_TRAINER
 #define _INCL_FACE_TRAINER
 
+#include "opencv2/highgui/highgui.hpp"
+
 #include "ui_faceTrainer.h"
 #include "opencvWebcam.h"
 #include "detector.h"
@@ -15,6 +17,7 @@ class faceTrainer: public QMainWindow
     
     private:
       int timerId;
+	static const int FACE_COUNT = 13;
         
       /**
       * UI object of the face trainer main window
@@ -81,7 +84,7 @@ class faceTrainer: public QMainWindow
       /**
       * OpenCV webcam object
       */
-      opencvWebcam webcam;
+      cv::VideoCapture webcam;
       
       /**
       * Detector object

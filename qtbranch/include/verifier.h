@@ -45,6 +45,14 @@ class verifier
     */
     struct passwd* userStruct;
 
+    /**
+    * alculate the threshold gigen the hints from the config file and the setting of
+    * @param threshold - the given ( in storage) threshold.
+    * @param percentage - the given percentage modifier ( in storage).
+    * @result The threshold to use in the calcualtions
+    */
+    double calculateThreshold( double threshold, double percentage);
+
   public:
     /**
     * Contains the path $HOME/.pam-face-authentication/faces
@@ -110,10 +118,17 @@ class verifier
     */
     setFace* getFaceSet();
 
+    /**
+    * Release a face set
+    * @param setFace the set of faces as returned by getFaceSet()
+    * @see getFaceSet
+    */
+    void releaseFaceSet( setFace *);
+
     //TODO
     /**
     * VerifyFace - Does the verification of the param image with the current user
-    * @result 1 - Verified, 0 - Imposter
+    * @result >0 - Verified, 0 - Imposter, -1 not trained
     */
     int verifyFace(IplImage* face);
 

@@ -1,6 +1,8 @@
 #ifndef _INCL_EYES_DETECTOR
 #define _INCL_EYES_DETECTOR
 
+#include <opencv2/objdetect/objdetect.hpp>
+
 /**
 * Eye structure. Information that describe the detected eyes on the face image
 */
@@ -20,8 +22,8 @@ class eyesDetector
       /**
       *Eye Cascade Structures
       */
-      CvHaarClassifierCascade* nested_cascade_;
-      CvHaarClassifierCascade* nested_cascade_2_;
+      cv::CascadeClassifier nested_cascade_;
+      cv::CascadeClassifier nested_cascade_2_;
       
       /**
       * Work area for Haar detection

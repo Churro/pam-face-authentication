@@ -26,28 +26,43 @@
 //------------------------------------------------------------------------------
 QImage* QImageIplImageCvt(IplImage* input)
 {
-  if(!input) return 0;
+    IplImage *frame = 0;
+    if(!input) return 0;
 
-  // TODO: Make constructor/destructor in order to free the alloc'ed QImage
-  QImage* image = new QImage(IMAGE_WIDTH, IMAGE_HEIGHT, QImage::Format_RGB32);
-  QRgb value;
-  uchar* pBits = image->bits();
-  int nBytesPerLine = image->bytesPerLine();
+    // TODO: Make constructor/destructor in order to free the alloc'ed QImage
+    QImage* image = new QImage(IMAGE_WIDTH, IMAGE_HEIGHT, QImage::Format_RGB32);
+    QRgb value;
+    uchar* pBits = image->bits();
+    int nBytesPerLine = image->bytesPerLine();
 
-  for(int n = 0; n < IMAGE_HEIGHT; n++)
-  {
-    for(int m = 0; m < IMAGE_WIDTH; m++)
-    {
-      CvScalar s = cvGet2D(input, n, m);
-      QRgb value = qRgb((uchar)s.val[2], (uchar)s.val[1], (uchar)s.val[0]);
-
-      // printf("%d %d %d \n",(uchar)s.val[2], (uchar)s.val[1], (uchar)s.val[0]);
-      uchar* scanLine = pBits + n * nBytesPerLine;
-      ((uint *)scanLine)[m] = value;
-      //image->setPixel(m, n, value);
+    /**
+    * Convert the image to the size needed for the display, if required.
+    *   else just use the original image.
+    * TODO use the size of the QT scene
+    */
+    if ( (input->height != IMAGE_HEIGHT) || (input->width != IMAGE_WIDTH) ) {
+        frame = cvCreateImage( cvSize( IMAGE_WIDTH, IMAGE_HEIGHT),
+                IPL_DEPTH_8U, input->nChannels);
+        cvResize( input, frame, CV_INTER_LINEAR);
+        input = frame;
     }
-  }
 
-  return image;
+    for(int n = 0; n < IMAGE_HEIGHT; n++)
+    {
+        uchar* scanLine = pBits + n * nBytesPerLine;
+        for(int m = 0; m < IMAGE_WIDTH; m++)
+        {
+            CvScalar s = cvGet2D(input, n, m);
+            QRgb value = qRgb((uchar)s.val[2], (uchar)s.val[1], (uchar)s.val[0]);
+
+            ((uint *)scanLine)[m] = value;
+            //image->setPixel(m, n, value);
+        }
+    }
+
+    if ( frame != NULL)   // We allocated a new frame so release it
+        cvReleaseImage(&frame);
+    return image;
 }
+/* vim: set ts:4 sw:4 ai et */
 

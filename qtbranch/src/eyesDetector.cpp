@@ -16,11 +16,18 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//#include <cstdio>
+#define DEBUG 1
 #include <string>
+#ifdef DEBUG
+#include <iostream>
+#endif
 #include <cv.h>
+#include <highgui.h>
+#include <opencv2/objdetect/objdetect.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #include "eyesDetector.h"
 #include "pam_face_defines.h"
+
 
 using std::string;
 
@@ -33,8 +40,8 @@ const string HAAR_CASCADE_EYE_2 = PKGDATADIR "/haarcascade_eye.xml";
 eyesDetector::eyesDetector() : bothEyesDetected_(false)
 {
     // Load two cascade files
-    nested_cascade_ = (CvHaarClassifierCascade*)cvLoad(HAAR_CASCADE_EYE.c_str(), 0, 0, 0);
-    nested_cascade_2_ = (CvHaarClassifierCascade*)cvLoad(HAAR_CASCADE_EYE_2.c_str(), 0, 0, 0);
+    nested_cascade_.load(HAAR_CASCADE_EYE.c_str());
+    nested_cascade_2_.load(HAAR_CASCADE_EYE_2.c_str());
     
     // Setup the storage and clear it
     storage_ = cvCreateMemStorage(0);
@@ -49,8 +56,6 @@ eyesDetector::eyesDetector() : bothEyesDetected_(false)
 //------------------------------------------------------------------------------
 eyesDetector::~eyesDetector()
 {
-    if(nested_cascade_) cvReleaseHaarClassifierCascade(&nested_cascade_);
-    if(nested_cascade_2_) cvReleaseHaarClassifierCascade(&nested_cascade_2_);
     if(storage_) cvReleaseMemStorage(&storage_);
 }
 
@@ -60,9 +65,7 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
     bothEyesDetected_ = false;
     
     int scale = 1;
-    int leftT = 0, rightT = 0, Flag = 0;
-    //static int countR;
-    //static CvPoint leftEyeP, rightEyeP;
+    bool leftT = false, rightT = false;
 
     // (Re-)initialize eyesInformation params
     eyesInformation.LE = cvPoint(0, 0);
@@ -75,9 +78,16 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
     if(input == 0) return;
     
     IplImage* gray = cvCreateImage(cvSize(input->width, input->height/2), 8, 1);
+    IplImage* working = gray;
     IplImage* gray_fullimage = cvCreateImage(cvGetSize(fullImage), 8, 1);
-    IplImage* gray_scale = cvCreateImage(cvSize(input->width / scale,
+
+    // Only create scales image if we are scaling (reduces accuracy at low res)
+    IplImage* gray_scale = NULL;
+    if ( scale != 1) {
+        gray_scale = cvCreateImage(cvSize(input->width / scale,
                                       input->height / (2*scale)), 8, 1);
+        working = gray_scale;
+    }
 
     cvSetImageROI(input, cvRect(0, (input->height) / 8, input->width,
       (input->height) / 2));
@@ -85,36 +95,52 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
     cvResetImageROI(input);
 
     cvCvtColor(fullImage, gray_fullimage, CV_BGR2GRAY);
-    cvResize(gray, gray_scale, CV_INTER_LINEAR);
+    if( gray_scale) cvResize(gray, gray_scale, CV_INTER_LINEAR);
     
     // Perform histogram equalization (increases contrast and dynamic range)
-    cvEqualizeHist(gray_scale, gray_scale);    
+    cvSmooth(working, working, CV_GAUSSIAN,3,3);
+    cvEqualizeHist(working, working);    
     
+    std::vector<cv::Rect> nested_objects;
     // First round of Haar detection using nested_cascade_
-    CvSeq* nested_objects = cvHaarDetectObjects(gray_scale, 
-      nested_cascade_, storage_, 1.4, 2, 0, cvSize(0, 0));
+    nested_cascade_.detectMultiScale( working, nested_objects, 1.1, 2, 0, cvSize(20, 20));
     
-    int count = nested_objects ? nested_objects->total : 0;
-    if(count == 0)
+    int count = nested_objects.size();
+#ifdef DEBUG
+    std::cout << "Cascade " << HAAR_CASCADE_EYE << " Found " <<  count << std::endl;
+    std::cout << "locations :";
+    for(int j = 0; j < nested_objects.size(); j++)
+    {
+        std::cout << "i:"<< j << " " << nested_objects[j] << std::endl;
+    }
+#endif
+    if(count < 2)
     {
         // Second round of detection using nested_cascade_2_
-        nested_objects = cvHaarDetectObjects(gray_scale, nested_cascade_2_, 
-          storage_, 1.4, 2, 0, cvSize(0, 0));
+        nested_cascade_2_.detectMultiScale( working, nested_objects, 1.1, 2, 0, cvSize(20, 20));
           
-        count = nested_objects ? nested_objects->total : 0;
+        count = nested_objects.size();
+#ifdef DEBUG
+        std::cout << "Cascade " << HAAR_CASCADE_EYE_2 << " Found " <<  count << std::endl;
+        std::cout << "locations :";
+        for(int j = 0; j < nested_objects.size(); j++)
+        {
+            std::cout << "i:"<< j << " " << nested_objects[j] << std::endl;
+        }
+#endif
     }
 
     if(count > 0)
     {
-        for(int j = 0; j < (nested_objects ? nested_objects->total : 0); j++)
+        for(int j = 0; j < nested_objects.size(); j++)
         {
-            CvPoint center;
-            CvRect* nr = (CvRect*)cvGetSeqElem(nested_objects, j);
-            center.x = cvRound((LT.x + (nr->x + nr->width*0.5)*scale));
-            center.y = cvRound((LT.y + (input->height)/8 + (nr->y + nr->height*0.5)*scale));
+            cv::Point center;
+            cv::Rect nr = nested_objects[j];
+            center.x = cvRound((LT.x + (nr.x + nr.width*0.5)*scale));
+            center.y = cvRound((LT.y + (input->height)/8 + (nr.y + nr.height*0.5)*scale));
 
-            if((center.x - 4) > 0 && ((center.x - 4) < (IMAGE_WIDTH-8)) && 
-               (center.y - 4) > 0 && ((center.y - 4) < (IMAGE_HEIGHT-8)))
+            if((center.x - 4) > 0 && ((center.x - 4) < (gray_fullimage->width-8)) && 
+               (center.y - 4) > 0 && ((center.y - 4) < (gray_fullimage->height-8)))
             {
                 cvSetImageROI(gray_fullimage, cvRect(center.x - 4, center.y - 4, 8, 8));
                 
@@ -131,23 +157,28 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
                     eyesInformation.LE.x = xCordinate;
                     eyesInformation.LE.y = yCordinate;
 
-                    /* cvCircle(fullImage, cvPoint(eyesInformation.LE.x,eyesInformation.LE.y), 
-                        4, CV_RGB(128,128,128), 1, 8, 0); */
-                    leftT = 1;
+#ifdef DEBUG
+                    cvCircle(fullImage, cvPoint(eyesInformation.LE.x,eyesInformation.LE.y), 
+                        4, CV_RGB(0,255,0), 1, 8, 0);
+#endif
+                    leftT = true;
+
                 }
                 else
                 {
                     eyesInformation.RE.x = xCordinate;
                     eyesInformation.RE.y = yCordinate;
 
-                    /* cvCircle( fullImage, cvPoint(eyesInformation.RE.x,eyesInformation.RE.y), 
-                      4, CV_RGB(128,128,128), 1, 8, 0); */
-                    rightT = 1;
+#ifdef DEBUG
+                    cvCircle( fullImage, cvPoint(eyesInformation.RE.x,eyesInformation.RE.y), 
+                      4, CV_RGB(0,255,0), 1, 8, 0);
+#endif
+                    rightT = true;
                 }
             }
         }
 
-        if(leftT == 1 && rightT == 1)
+        if(leftT && rightT)
         {
             eyesInformation.Length = sqrt(pow(eyesInformation.RE.y - eyesInformation.LE.y, 2)
               + pow(eyesInformation.RE.x - eyesInformation.LE.x, 2));
@@ -155,9 +186,15 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
         }
     }
 
+#ifdef DEBUG
+    std::cout << "Eyes Len ("<< eyesInformation.Length <<") LE @(" << eyesInformation.LE.x
+        << "," << eyesInformation.LE.y << ") RE @(" << eyesInformation.RE.x <<","
+        << eyesInformation.RE.y<< ")" << std::endl;
+#endif
+
     cvReleaseImage(&gray_fullimage);
     cvReleaseImage(&gray);
-    cvReleaseImage(&gray_scale);
+    if ( gray_scale ) cvReleaseImage(&gray_scale);
 }
 
 //------------------------------------------------------------------------------
@@ -165,7 +202,7 @@ bool eyesDetector::checkEyeDetected()
 {
     if(bothEyesDetected_ == true) 
         return true;
-    else 
+    else
         return false;
 }
 

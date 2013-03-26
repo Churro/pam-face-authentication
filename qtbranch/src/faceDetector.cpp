@@ -24,6 +24,8 @@
 
 using std::string;
 
+#define DEBUG 1
+
 // Frontal face cascade
 const string HAAR_CASCADE_FACE = PKGDATADIR "/haarcascade.xml";
 
@@ -84,7 +86,7 @@ void faceDetector::runFaceDetector(IplImage* input)
     
     if(cascade_)
     {
-        CvSeq* faces = cvHaarDetectObjects(small_img, cascade_, storage_, 1.4, 2, 0
+        CvSeq* faces = cvHaarDetectObjects(small_img, cascade_, storage_, 1.1, 2, 0
           // |CV_HAAR_FIND_BIGGEST_OBJECT
           // |CV_HAAR_DO_ROUGH_SEARCH
           |CV_HAAR_DO_CANNY_PRUNING
@@ -98,7 +100,7 @@ void faceDetector::runFaceDetector(IplImage* input)
             CvRect* r = (CvRect*)cvGetSeqElem(faces, maxI);
 
             // When looping faces, select the biggest one
-            if(max0 < (r->width * r->height))
+            if(max0 < (r->width * r->height));
             {
                 max0 = (r->width * r->height);
                 maxI = i;
@@ -117,16 +119,17 @@ void faceDetector::runFaceDetector(IplImage* input)
             faceInformation.Width = (r->width) * scale;
             faceInformation.Height = (r->height) * scale;
         
-            IplImage* in = clipDetectedFace(input);
+            //IplImage* in = clipDetectedFace(input);
             //faceTracker.setModel(in);
             /* static CvPoint fp1, fp2;
                 fp1 = faceInformation.LT;
                 fp2 = faceInformation.RB;
             */
-            // cvRectangle(input, faceInformation.LT, faceInformation.RB, CV_RGB(255,0,0), 3, 8, 0);
         }
-        // else
-        //   cvRectangle(input, faceInformation.LT, faceInformation.RB, CV_RGB(0,255,0), 3, 8, 0);
+#ifdef DEBUG
+        else
+          cvRectangle(input, faceInformation.LT, cvPoint(input->width, input->height), CV_RGB(0,255,0), 3, 8, 0);
+#endif
     }
 
     cvReleaseImage(&gray);
@@ -147,6 +150,10 @@ IplImage* faceDetector::clipDetectedFace(IplImage* input)
       cvSize(faceInformation.Width, faceInformation.Height),
       IPL_DEPTH_8U, input->nChannels);
     
+#ifdef DEBUG
+    cvRectangle(input, faceInformation.LT, faceInformation.RB, CV_RGB(255,0,0), 3, 8, 0);
+#endif
+
     cvSetImageROI(input, 
       cvRect(faceInformation.LT.x, faceInformation.LT.y, 
         faceInformation.Width, faceInformation.Height));

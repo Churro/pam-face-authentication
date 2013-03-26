@@ -37,6 +37,8 @@
 #define EYE_MACE_SIZE 64
 #define INSIDE_FACE_MACE_SIZE 64
 
+#define DEBUG
+
 using std::string;
 using std::list;
 
@@ -156,17 +158,14 @@ void verifier::createBiometricModels(char* setName = NULL)
             temp->faceImages[i].count, INSIDE_FACE_MACE_SIZE);
             
         IplImage* averageImage = cvCreateImage(
-            // cvSize(temp->faceImages[i].faces[0]->width, temp->faceImages[i].faces[0]->height), 
             cvGetSize(temp->faceImages[i].faces[0]), IPL_DEPTH_64F, 1);
         cvZero(averageImage);
 
         for(int index = 0; index < temp->faceImages[i].count; index++)
         {
             IplImage* averageImageFace = cvCreateImage(
-                //cvSize(temp->faceImages[i].faces[index]->width, temp->faceImages[i].faces[index]->height),
                 cvGetSize(temp->faceImages[i].faces[index]), IPL_DEPTH_64F, 1);
             IplImage* averageImageFace64 = cvCreateImage(
-                //cvSize(temp->faceImages[i].faces[index]->width,temp->faceImages[i].faces[index]->height), 
                 cvGetSize(temp->faceImages[i].faces[index]), 8, 1);
             cvCvtColor(temp->faceImages[i].faces[index], averageImageFace64, CV_BGR2GRAY);
             cvScale(averageImageFace64, averageImageFace, 1.0, 0.0);
@@ -205,7 +204,9 @@ void verifier::createBiometricModels(char* setName = NULL)
 
         int Nx = floor((averageImage->width )/35);
         int Ny = floor((averageImage->height)/30);
-        // printf("%d %d A \n",Nx,Ny);
+#ifdef DEBUG
+        printf("%d %d A \n",Nx,Ny);
+#endif
         CvMat* featureLBPHistMatrix = cvCreateMat(Nx*Ny*59, 1, CV_64FC1);
         featureLBPHist(averageImage, featureLBPHistMatrix);
         IplImage* weights = cvCreateImage(cvSize(5*4, temp->faceImages[i].count), 
@@ -214,10 +215,8 @@ void verifier::createBiometricModels(char* setName = NULL)
         for(int index = 0; index < temp->faceImages[i].count; index++)
         {
             IplImage* averageImageFace = cvCreateImage(
-                //cvSize(temp->faceImages[i].faces[index]->width,temp->faceImages[i].faces[index]->height),
                 cvGetSize(temp->faceImages[i].faces[index]), IPL_DEPTH_64F, 1);
             IplImage* averageImageFace64 = cvCreateImage(
-                //cvSize(temp->faceImages[i].faces[index]->width,temp->faceImages[i].faces[index]->height);
                 cvGetSize(temp->faceImages[i].faces[index]), 8, 1);
             cvCvtColor(temp->faceImages[i].faces[index], averageImageFace64, CV_BGR2GRAY);
             cvScale(averageImageFace64, averageImageFace, 1.0, 0.0);
@@ -241,7 +240,9 @@ void verifier::createBiometricModels(char* setName = NULL)
                         if((hist1 + hist2) != 0) 
                             chiSquare += (pow(hist1 - hist2, 2) / (hist1 + hist2));
 
-                        // printf("%e \n", weights[i][j]);
+#ifdef DEBUG
+                        printf("chiSquare %e \n", chiSquare);
+#endif
                     }
                     CvScalar s1;
                     s1.val[0] = chiSquare;
@@ -290,14 +291,23 @@ void verifier::createBiometricModels(char* setName = NULL)
         
         for(int j = 0; j < 4; j++)
         {
+#ifdef DEBUG
+            printf("Variance (%d)", j);
+#endif
             for(int i = 0; i < 5; i++)
             {
                 CvScalar s1 = cvGet2D(variance, 0, j*5 + i);
-                // printf("%e\t", s1.val[0]);
+#ifdef DEBUG
+                printf("%e\t", s1.val[0]);
+#endif
             }
-            // printf("\n");
+#ifdef DEBUG
+            printf("\n");
+#endif
         }
-        // printf("\n");
+#ifdef DEBUG
+        printf("\n");
+#endif
 
         cvDiv(NULL, variance, variance);
         CvScalar totalVariance = cvSum(variance);
@@ -310,9 +320,7 @@ void verifier::createBiometricModels(char* setName = NULL)
                 s1.val[0]= (s1.val[0]*20) / totalVariance.val[0];
                 cvSet2D(finalWeights, j, i, s1);
             }
-            // printf("\n");
         }
-        //  printf("\n");
 
         cvReleaseImage(&variance);
         cvReleaseImage(&sumSq);
@@ -320,7 +328,7 @@ void verifier::createBiometricModels(char* setName = NULL)
         cvReleaseImage(&sum);
 
         char lbpFacePath[300];
-        sprintf(lbpFacePath, "%s/%s_face_lbp.xml", modelDirectory.c_str(), temp->setName[i]);
+        snprintf(lbpFacePath, 300, "%s/%s_face_lbp.xml", modelDirectory.c_str(), temp->setName[i]);
         CvFileStorage* fs = cvOpenFileStorage(lbpFacePath, 0, CV_STORAGE_WRITE);
         cvWrite(fs, "lbp", featureLBPHistMatrix, cvAttrList(0,0) );
         cvWrite(fs, "weights", finalWeights, cvAttrList(0,0) );
@@ -367,24 +375,30 @@ void verifier::createBiometricModels(char* setName = NULL)
         faceMaceFilter.thresholdPCER = maceFaceValuesPCER->front();
         faceMaceFilter.thresholdPSLR = maceFaceValuesPSLR->front() 
             + (avFace-maceFaceValuesPSLR->front()) / 10;
-        // printf("%d %d \n", maceFaceValuesPSLR->front(), avFace);
+#ifdef DEBUG
+        printf("%d %d \n", maceFaceValuesPSLR->front(), avFace);
+#endif
         faceMaceFilter.filter = maceFilterFace;
-        sprintf(faceMaceFilter.maceFilterName, "%s_face_mace.xml", temp->setName[i]);
+        snprintf(faceMaceFilter.maceFilterName, 300, "%s_face_mace.xml", temp->setName[i]);
 
         eyeMaceFilter.thresholdPCER = maceEyeValuesPCER->front();
         eyeMaceFilter.thresholdPSLR = maceEyeValuesPSLR->front() 
             + (avEye-maceEyeValuesPSLR->front()) / 10;
         eyeMaceFilter.filter = maceFilterEye;
-        sprintf(eyeMaceFilter.maceFilterName, "%s_eye_mace.xml", temp->setName[i]);
-        // printf("%d %d \n",maceEyeValuesPSLR->front(), avEye);
+        snprintf(eyeMaceFilter.maceFilterName, 300, "%s_eye_mace.xml", temp->setName[i]);
+#ifdef DEBUG
+        printf("%d %d \n",maceEyeValuesPSLR->front(), avEye);
+#endif
 
         insideFaceMaceFilter.thresholdPCER = maceInsideFaceValuesPCER->front();
         insideFaceMaceFilter.thresholdPSLR = maceInsideFaceValuesPSLR->front() 
             + (avInsideFace-maceInsideFaceValuesPSLR->front()) / 10;
         insideFaceMaceFilter.filter = maceFilterInsideFace;
         
-        sprintf(insideFaceMaceFilter.maceFilterName,"%s_inside_face_mace.xml",temp->setName[i]);
-        //printf("%d %d \n",maceInsideFaceValuesPSLR->front(),avInsideFace);
+        snprintf(insideFaceMaceFilter.maceFilterName, 300, "%s_inside_face_mace.xml",temp->setName[i]);
+#ifdef DEBUG
+        printf("%d %d \n",maceInsideFaceValuesPSLR->front(),avInsideFace);
+#endif
 
         saveMace(&faceMaceFilter, modelDirectory.c_str());
         saveMace(&eyeMaceFilter, modelDirectory.c_str());
@@ -416,10 +430,10 @@ string verifier::createSetDir() const
 
     Tm = localtime(&ltime);
     gettimeofday(&detail_time, NULL);
-    sprintf(uniqueName, "%d%d%d%d%d%d%ld%ld%d", Tm->tm_year, Tm->tm_mon,
+    snprintf(uniqueName, 256, "%d%d%d%d%d%d%ld%ld%d", Tm->tm_year, Tm->tm_mon,
             Tm->tm_mday, Tm->tm_hour, Tm->tm_min, Tm->tm_sec,
             (detail_time.tv_usec/1000), detail_time.tv_usec, Tm->tm_wday);
-    sprintf(setDir, "%s/.pam-face-authentication/faces/%s",
+    snprintf(setDir, 256, "%s/.pam-face-authentication/faces/%s",
             userStruct->pw_dir,uniqueName);
     mkdir(setDir, S_IRWXU );
 
@@ -437,7 +451,7 @@ void verifier::addFaceSet(IplImage** set, int size)
 
     for (int i = 0; i < size; i++)
     {
-        sprintf(filename, "%s/%d.jpg", dirName.c_str(), i);
+        snprintf(filename, 300, "%s/%d.jpg", dirName.c_str(), i);
         cvSaveImage(filename, set[i]);
         cvReleaseImage(&set[i]);
     }
@@ -451,34 +465,49 @@ void verifier::removeFaceSet(char* setName)
 {
     char dirname[300], filename[300], maceFilters[300];
     struct dirent* de = NULL;
-    sprintf(dirname, "%s/%s", facesDirectory.c_str(), setName);
+    snprintf(dirname, 300, "%s/%s", facesDirectory.c_str(), setName);
 
     DIR* d=opendir(dirname);
     while (de = readdir(d))
     {
         if (strcmp(de->d_name + strlen(de->d_name)-3, "jpg") == 0)
         {
-            sprintf(filename, "%s/%s", dirname, de->d_name);
-            // printf("%s\n", filename);
+            snprintf(filename, 300, "%s/%s", dirname, de->d_name);
             remove(filename);
         }
     }
 
-    sprintf(maceFilters,"%s/%s_face_lbp.xml", modelDirectory.c_str(), setName);
+    snprintf(maceFilters, 300, "%s/%s_face_lbp.xml", modelDirectory.c_str(), setName);
     remove(maceFilters);
-    sprintf(maceFilters,"%s/%s_face_mace.xml", modelDirectory.c_str(), setName);
+    snprintf(maceFilters, 300, "%s/%s_face_mace.xml", modelDirectory.c_str(), setName);
     remove(maceFilters);
-    sprintf(maceFilters,"%s/%s_eye_mace.xml", modelDirectory.c_str(), setName);
+    snprintf(maceFilters, 300, "%s/%s_eye_mace.xml", modelDirectory.c_str(), setName);
     remove(maceFilters);
-    sprintf(maceFilters,"%s/%s_inside_face_mace.xml", modelDirectory.c_str(), setName);
+    snprintf(maceFilters, 300, "%s/%s_inside_face_mace.xml", modelDirectory.c_str(), setName);
     remove(maceFilters);
     remove(dirname);
 
     // createBiometricModels();
-    // sprintf(dirname, "%s/%s_mace.xml", modelDirectory, setName);
+    // snprintf(dirname, 300, "%s/%s_mace.xml", modelDirectory, setName);
     // remove(dirname);
 }
 
+//------------------------------------------------------------------------------
+double verifier::calculateThreshold(double lbpThresh, double percentage)
+{
+
+    // double thresholdLBP = MAX_THRESHOLD_LBP-(newConfig->percentage*10000);
+    double thresholdLBP = lbpThresh;
+    double percentageModifier =((.80-percentage)*100);
+    int baseIncrease =floor(log10(lbpThresh)) - 2;
+    while (baseIncrease>0)
+    {
+        percentageModifier*=10;
+        baseIncrease--;
+    }
+    return( thresholdLBP+=percentageModifier*1.2);
+
+}
 //------------------------------------------------------------------------------
 int verifier::verifyFace(IplImage* faceMain)
 {
@@ -488,30 +517,48 @@ int verifier::verifyFace(IplImage* faceMain)
 
     if (faceMain == 0) return 0;
 
-    list<string>* faceSetName = new list<string>;
-    list<string>::iterator it;
+    d = opendir(facesDirectory.c_str());
+    if (!d) return -2;
+
+#ifdef DEBUG
+    printf("\nChecking faces: \n");
+#endif
 
     CvFileStorage* fileStorage;
     CvMat* maceFilterUser;
     CvMat* lbpModel;
     CvMat* weights;
 
+    /**
+    * creat the working buffers:
+    *   face is a smaller version of the full face image.
+    *   face grey is a grey scale version
+    */
     IplImage* face = cvCreateImage(cvSize(140, 150), 8, faceMain->nChannels);
+    cvResize(faceMain, face, CV_INTER_LINEAR);
+
     IplImage* faceGray = cvCreateImage(cvSize(140, 150), 8, 1);
+    cvCvtColor(face, faceGray, CV_BGR2GRAY);
+
     int Nx = floor((faceGray->width )/35);
     int Ny= floor((faceGray->height)/30);
 
     CvMat* featureLBPHistMatrix = cvCreateMat(Nx*Ny*59, 1, CV_64FC1);
 
-    cvResize(faceMain, face, CV_INTER_LINEAR);
-    cvCvtColor(face, faceGray, CV_BGR2GRAY);
     featureLBPHist(faceGray, featureLBPHistMatrix);
+    cvReleaseImage( &faceGray);
 
+    /*
+    * Create an color buffer for the eye area.
+    */
     IplImage* eye = cvCreateImage(cvSize(140, 60), 8, face->nChannels);
     cvSetImageROI(face, cvRect(0, 0, 140, 60));
     cvResize(face, eye, CV_INTER_LINEAR );
     cvResetImageROI(face);
 
+    /*
+    *
+    */
     IplImage* insideFace = cvCreateImage(cvSize(80, 105), 8, face->nChannels);
     cvSetImageROI(face, cvRect(30, 45, 80, 105));
     cvResize(face, insideFace, CV_INTER_LINEAR);
@@ -519,21 +566,20 @@ int verifier::verifyFace(IplImage* faceMain)
 
     config* newConfig = getConfig((char*)configDirectory.c_str());
 
-    d = opendir(facesDirectory.c_str());
-    if (!d) return 2;
-
     while (de = readdir(d))
     {
         if (!((strcmp(de->d_name, ".") == 0) || (strcmp(de->d_name, "..") == 0)))
         {
-            //  printf("%s -- \n",de->d_name);
+#ifdef DEBUG
+            printf("model %s -- ",de->d_name);
+#endif
             k++;
             char facePath[300];
             char eyePath[300];
             char insideFacePath[300];
             char lbp[300];
 
-            sprintf(lbp, "%s/%s_face_lbp.xml", modelDirectory.c_str(), de->d_name);
+            snprintf(lbp, 300, "%s/%s_face_lbp.xml", modelDirectory.c_str(), de->d_name);
             fileStorage = cvOpenFileStorage(lbp, 0, CV_STORAGE_READ );
             if (fileStorage == 0) continue;
 
@@ -543,28 +589,27 @@ int verifier::verifyFace(IplImage* faceMain)
             if (weights == 0) continue;
 
             double lbpThresh = cvReadRealByName(fileStorage, 0, "thresholdLbp",8000);
+            cvReleaseFileStorage(&fileStorage);
+
             double val = LBPCustomDiff(lbpModel, featureLBPHistMatrix,weights);
             cvReleaseMat(&lbpModel);
+            cvReleaseMat(&weights);
             double step =lbpThresh/8;
 
             // double thresholdLBP = MAX_THRESHOLD_LBP-(newConfig->percentage*10000);
-            double thresholdLBP = lbpThresh;
-            double percentageModifier =((.80-newConfig->percentage)*100);
-            int baseIncrease =floor(log10(lbpThresh)) - 2;
-            while (baseIncrease>0)
-            {
-                percentageModifier*=10;
-                baseIncrease--;
-            }
-            thresholdLBP+=percentageModifier*1.2;
-            //printf("%e %e %e\n", val, (thresholdLBP+step), step);
+            double thresholdLBP = calculateThreshold(lbpThresh, newConfig->percentage);
+#ifdef DEBUG
+            printf("%e %e %e", val, (thresholdLBP+step), step);
+#endif
 
             if (val < (thresholdLBP+step))
             {
-                //printf("\ntrue\n");
-                sprintf(facePath, "%s/%s_face_mace.xml", modelDirectory.c_str(), de->d_name);
-                sprintf(eyePath, "%s/%s_eye_mace.xml", modelDirectory.c_str(), de->d_name);
-                sprintf(insideFacePath, "%s/%s_inside_face_mace.xml", modelDirectory.c_str(),
+#ifdef DEBUG
+                printf(" match\n");
+#endif
+                snprintf(facePath, 300, "%s/%s_face_mace.xml", modelDirectory.c_str(), de->d_name);
+                snprintf(eyePath, 300, "%s/%s_eye_mace.xml", modelDirectory.c_str(), de->d_name);
+                snprintf(insideFacePath, 300, "%s/%s_inside_face_mace.xml", modelDirectory.c_str(),
                         de->d_name);
 
                 fileStorage = cvOpenFileStorage(facePath, 0, CV_STORAGE_READ);
@@ -597,11 +642,13 @@ int verifier::verifyFace(IplImage* faceMain)
                 int pcent = int(((double)value / (double)PSLR)*100);
                 int lowerPcent = int(newConfig->percentage*100.0);
                 int upperPcent = int((newConfig->percentage+((1-newConfig->percentage)/4))*100.0);
-                //  printf("Current Percent %d Lower %d Upper %d\n", pcent, lowerPcent,upperPcent);
+#ifdef DEBUG
+                printf("Current Percent %d Lower %d Upper %d\n", pcent, lowerPcent,upperPcent);
+#endif
 
                 if (pcent >= upperPcent)
                 {
-                    count = 1;
+                    count = k;
                     break;
                 }
                 else if (pcent < lowerPcent)
@@ -611,28 +658,47 @@ int verifier::verifyFace(IplImage* faceMain)
                 {
                     double newThres = thresholdLBP + (double(double(pcent-lowerPcent) /
                                                       double(upperPcent-lowerPcent))*double(step));
-                    // printf("New Thres %e\n", newThres);
+#ifdef DEBUG
+                    printf("New Thres %e\n", newThres);
+#endif
 
                     if (val < newThres)
                     {
-                        count = 1;
+                        count = k;
                         break;
                     }
                 }
 
-                // int percentage = int( (double(value)/double(PSLR))*100.0);
-                // printf("%d \n",percentage);
+#ifdef DEBUG
+                int percentage = int( (double(value)/double(PSLR))*100.0);
+                printf("%d \n",percentage);
+#endif
                 cvReleaseFileStorage(&fileStorage);
                 cvReleaseMat(&maceFilterUser);
             }
+#ifdef DEBUG
+            else
+            {
+                printf(" unmatched (%5.2f)\n", val - (thresholdLBP+step));
+
+            }
+#endif
         }
     }
+    closedir(d);
 
-    if (k == 0) return 2;
-    if (count == 1)
+    cvReleaseMat(&featureLBPHistMatrix);
+    cvReleaseImage( &face);
+    cvReleaseImage( &insideFace);
+    cvReleaseImage( &eye);
+    delete newConfig;
+    if (k == 0) return -1;
+    if (count > 0)
     {
-        // printf("\n YES \n");
-        return 1;
+#ifdef DEBUG
+        printf("\n Found \n");
+#endif
+        return count;
     }
     else
     {
@@ -654,7 +720,7 @@ allFaces* verifier::getFaceImagesFromAllSet()
     int k=0;
     for (i=0;i<faceSetStruct.count;i++)
     {
-        sprintf(modelDir,"%s/%s",facesDirectory,faceSetStruct->setName[i]);
+        snprintf(modelDir, 300, "%s/%s",facesDirectory,faceSetStruct->setName[i]);
         // printf("%s \n",modelDir);
         d=opendir(modelDir);
         while (de = readdir(d))
@@ -663,7 +729,7 @@ allFaces* verifier::getFaceImagesFromAllSet()
             {
                 k++;
                 char fullPath[300];
-                sprintf(fullPath,"%s/%s",modelDir,de->d_name);
+                snprintf(fullPath, 300, "%s/%s",modelDir,de->d_name);
                 mylist->push_back (fullPath);
             }
         }
@@ -686,7 +752,7 @@ allFaces* verifier::getFaceImagesFromAllSet()
         char *p;
         char * path=new char[300];
         p=&l[0];
-        sprintf(path,"%s",p);
+        snprintf(path, 300, "%s",p);
         newAllFaces->faceImages[index]=cvLoadImage(path,1);
         index++;
 
@@ -707,8 +773,8 @@ setFace* verifier::getFaceSet()
     list<string>* mylist = new list<string>;
     list<string>::iterator it;
 
+    //Build a list of the faces from the files in the faces dir
     d = opendir(facesDirectory.c_str());
-
     while (de = readdir(d))
     {
         if (!((strcmp(de->d_name, ".") == 0) || (strcmp(de->d_name, "..") == 0)))
@@ -717,6 +783,7 @@ setFace* verifier::getFaceSet()
             count++;
         }
     }
+    closedir(d);
 
     mylist->sort();
 
@@ -733,56 +800,78 @@ setFace* verifier::getFaceSet()
     {
         string l = *it;
         char* p;
+        //Temporary variable
+        char  imagesDir[300];
+        // setname and fileThumb are passed on
         char* setName=new char[300];
         char * fileThumb=new char[300];
-        char*  imagesDir=new char[300];
         int imageK = 0, imageIndex=0;
         struct dirent* de = NULL;
         DIR* d = NULL;
 
         p = &l[0];
-        sprintf(setName, "%s", p);
+        snprintf(setName, 300, "%s", p);
         setFaceStruct->setName[k] = setName;
 
-        sprintf(fileThumb, "%s/%s/1.jpg", facesDirectory.c_str(), p);
+        snprintf(fileThumb, 300, "%s/%s/1.jpg", facesDirectory.c_str(), p);
         setFaceStruct->setFilePathThumbnails[k] = fileThumb;
 
-        sprintf(imagesDir,"%s/%s",facesDirectory.c_str(), p);
+        snprintf(imagesDir, 300, "%s/%s",facesDirectory.c_str(), p);
 
-        list<string>* mylistImages = new list<string>;
+        list<string> mylistImages;
         list<string>::iterator itImages;
-        d = opendir(imagesDir);
 
+        //A list of the images
+        d = opendir(imagesDir);
         while (de = readdir(d))
         {
             if (!((strcmp(de->d_name, ".") == 0) || (strcmp(de->d_name, "..") == 0)))
             {
                 imageK++;
-                char fullPath[300];
-                sprintf(fullPath, "%s/%s", imagesDir, de->d_name);
-                mylistImages->push_back(fullPath);
+                char *fullPath = new char [300];
+                snprintf(fullPath, 300, "%s/%s", imagesDir, de->d_name);
+                mylistImages.push_back(fullPath);
+                delete [] fullPath;
             }
         }
+        closedir(d);
 
-        mylistImages->sort();
+        mylistImages.sort();
         setFaceStruct->faceImages[k].faces = new IplImage* [imageK];
         setFaceStruct->faceImages[k].count = imageK;
 
-        for (itImages=mylistImages->begin(); itImages!=mylistImages->end(); ++itImages)
+        // get all of the images
+        for (itImages=mylistImages.begin(); itImages!=mylistImages.end(); ++itImages)
         {
             string l = *itImages;
-            char* p;
-            char fileName[300];
+            char* filename;
 
-            p=&l[0];
-            sprintf(fileName, "%s", p);
-            setFaceStruct->faceImages[k].faces[imageIndex] = cvLoadImage(fileName, 1);
+            filename=&l[0];
+            setFaceStruct->faceImages[k].faces[imageIndex] = cvLoadImage(filename, 1);
             imageIndex++;
         }
 
         k++;
     }
 
+    delete mylist;
     return setFaceStruct;
+}
+
+//------------------------------------------------------------------------------
+void verifier::releaseFaceSet( setFace *faces) {
+    for ( int i = 0; i < faces->count; i++) {
+        for ( int j = 0; j < faces->faceImages[i].count; j++) {
+            cvReleaseImage(&faces->faceImages[i].faces[j]);
+        }
+        delete [] faces->faceImages[i].faces;
+        delete [] faces->setName[i];
+        delete [] faces->setFilePathThumbnails[i];
+    }
+    delete [] faces->setName;
+    delete [] faces->setFilePathThumbnails;
+    delete [] faces->faceImages;
+    delete faces;
+    return ;
 }
 

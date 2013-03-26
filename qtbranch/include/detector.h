@@ -87,6 +87,12 @@ class detector: public faceDetector, public eyesDetector
     */
     detector& operator =(const detector&);
 
+    /**
+    * utility method to update eye information
+    * @param 
+    */
+    void updateEyeTracker( tracker &eye, CvPoint &centerPoint, IplImage *gray );
+
   public:
     /**
     * The constuctor

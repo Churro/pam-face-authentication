@@ -2,6 +2,7 @@
 #define _INCL_FACE_TRAINER_ADV
 
 #include <string>
+#include "opencv2/highgui/highgui.hpp"
 #include "ui_faceTrainerAdvSettings.h"
 #include "opencvWebcam.h"
 #include "detector.h"
@@ -64,7 +65,7 @@ class faceTrainerAdvSettings: public QDialog
         * @param nd Detector Pointer
         * @param nv Verifier Pointer
         */
-        faceTrainerAdvSettings(QWidget* parent = 0, const std::string config = "");
+        faceTrainerAdvSettings(cv::VideoCapture &wc, QWidget* parent = 0, const std::string config = "");
         
         /**
         * The destructor
@@ -84,7 +85,7 @@ class faceTrainerAdvSettings: public QDialog
         /**
         * Pointer to OpenCV Webcam object
         */
-        opencvWebcam* webcam;
+        cv::VideoCapture &webcam;
         
         /**
         * Pointer to Detector object
@@ -98,11 +99,10 @@ class faceTrainerAdvSettings: public QDialog
         
         /**
         * Set Internal Variables of Face Advanced Settings Object
-        * @param wc Webcam Object Pointer
         * @param nd Detector Object Pointer
         * @param nv Verifier Object Pointer
         */
-        void sT(opencvWebcam* wc, detector* nd, verifier* nv);            
+        void sT( detector* nd, verifier* nv);            
 
 };
 

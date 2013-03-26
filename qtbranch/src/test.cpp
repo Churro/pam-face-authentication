@@ -24,8 +24,8 @@ for(i=1;i<8;i++)
 {
 // is -1 right?
 char filename1[300],filename2[300];
-sprintf(filename1,"/home/darksid3hack0r/ipaper/database/%d/1.jpg",i);
-sprintf(filename2,"/home/darksid3hack0r/ipaper/database/%d/3.jpg",i);
+snprintf(filename1, 300, "/home/darksid3hack0r/ipaper/database/%d/1.jpg",i);
+snprintf(filename2, 300, "/home/darksid3hack0r/ipaper/database/%d/3.jpg",i);
 IplImage* image1=cvLoadImage(filename1, -1);
 IplImage* image2=cvLoadImage(filename2, -1);
 //DO processing here
@@ -65,7 +65,7 @@ for(j=1;j<8;j++)
 if(i!=j)
 {
 char filename1[300],filename2[300];
-sprintf(filename1,"/home/darksid3hack0r/ipaper/database/%d/4.jpg",j);
+snprintf(filename1, 300, "/home/darksid3hack0r/ipaper/database/%d/4.jpg",j);
 IplImage* image1=cvLoadImage(filename1,1);
 int val=peakToSideLobeRatio(filters[i],image1,m,l);
 cvReleaseImage(&image1);
@@ -75,7 +75,7 @@ valsum1+=val;
 else
 {
 char filename1[300],filename2[300];
-sprintf(filename1,"/home/darksid3hack0r/ipaper/database/%d/2.jpg",i);
+snprintf(filename1, 300, "/home/darksid3hack0r/ipaper/database/%d/2.jpg",i);
 IplImage* image1=cvLoadImage(filename1,1);
 int val=peakToSideLobeRatio(filters[i],image1,m,l);
 valsum+=val;
