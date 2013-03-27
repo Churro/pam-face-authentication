@@ -226,7 +226,7 @@ void faceTrainer::captureClick()
     {
         ui.pb_capture->setText(tr("Cancel"));
         latch = 1;
-        newDetector.startClipFace(13);
+        newDetector.startClipFace(FACE_COUNT);
     }
     else
     {
@@ -302,7 +302,7 @@ void faceTrainer::timerEvent(QTimerEvent*)
     {
         setIbarText(tr("Processing Faces, Please Wait ..."));
         // cvWaitKey(1000);
-        newVerifier.addFaceSet(newDetector.returnClipedFace(), 13);
+        newVerifier.addFaceSet(newDetector.returnClipedFace(), FACE_COUNT);
         setIbarText(tr("Processing Completed."));
 
         captureClick();
