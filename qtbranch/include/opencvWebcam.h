@@ -3,17 +3,17 @@
 
 #include "cv.h"
 #include "highgui.h"
+#include "opencv2/highgui/highgui.hpp"
 
 /**
 * OpenCV Webcam class. This class provides the opencv image query functions.
 */
-class opencvWebcam
+class opencvWebcam: public cv::VideoCapture
 {
   private:
-    /**
-    * Opencv capture structure
-    */
-    CvCapture* capture_;
+    int cameraId;
+    cv::Mat image;
+    IplImage iplImage;
     
     /**
     * Copy constructor
@@ -30,7 +30,7 @@ class opencvWebcam
   public:
     /**
     * The Constructor
-    * Currently does nothing
+    * Obtain the camera to use and open it.
     */
     opencvWebcam();
     
@@ -44,7 +44,7 @@ class opencvWebcam
     * @result Image from webcam
     */
     IplImage* queryFrame();
-    
+
     /**
     * Initialize webcam for querying an image
     * @result returns true on success, false on failure

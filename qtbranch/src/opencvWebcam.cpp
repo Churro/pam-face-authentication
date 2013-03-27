@@ -19,11 +19,18 @@
 #include "opencvWebcam.h"
 #include "cv.h"
 #include "highgui.h"
+#include "opencv2/highgui/highgui.hpp"
 #include "pam_face_defines.h"
 
 //------------------------------------------------------------------------------
-opencvWebcam::opencvWebcam(): capture_(0)
+opencvWebcam::opencvWebcam(): cameraId(0)
 {
+   cv::FileStorage fileStorage(PKGDATADIR "/config.xml", cv::FileStorage::READ);
+   if (fileStorage.isOpened() ) {
+      cameraId = (int)fileStorage["CAMERA_INDEX"];
+   }
+
+   VideoCapture(cameraId);
 }
 
 //------------------------------------------------------------------------------
@@ -34,36 +41,21 @@ opencvWebcam::~opencvWebcam()
 //------------------------------------------------------------------------------
 bool opencvWebcam::startCamera()
 {
-   int i = 0;
-   CvFileStorage* fileStorage = cvOpenFileStorage(PKGDATADIR "/config.xml", 0, CV_STORAGE_READ);
-   
-   if(fileStorage)
-   {
-     i = cvReadIntByName(fileStorage, 0, "CAMERA_INDEX", 0);
-     cvReleaseFileStorage(&fileStorage);
-   }
-
-   capture_ = cvCaptureFromCAM(i);
-   if(!capture_) capture_ = cvCaptureFromCAM(CV_CAP_ANY);
-   if(!capture_) return false;
-     else return true;
+   if ( !isOpened() ) open(cameraId);
+   return (isOpened());
 }
 
 //------------------------------------------------------------------------------
 void opencvWebcam::stopCamera()
 {
-   if(capture_) cvReleaseCapture(&capture_);
+   release();
 }
 
 //------------------------------------------------------------------------------
-IplImage* opencvWebcam::queryFrame()
+IplImage * opencvWebcam::queryFrame()
 {
-    IplImage* originalFrame = cvQueryFrame(capture_);
-    if(!originalFrame) return 0;
-    
-    if(originalFrame->origin != IPL_ORIGIN_TL)
-      cvFlip(originalFrame, NULL, 0);
-    
-    return originalFrame;
+   read(image);
+   iplImage = image;
+   return &iplImage;
 }
 
