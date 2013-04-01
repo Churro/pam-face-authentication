@@ -38,6 +38,9 @@ int main( int argc, char **argv)
 
 			capture >> img;
 			if ( !(img.empty()) ) {
+				int imageNum;
+				char junk[100];
+				images++;
 				eyesDetector newDetector;
 				struct face aface;
 				aface.LT = cvPoint(0, 0);
@@ -45,9 +48,9 @@ int main( int argc, char **argv)
 				aface.Height=img.rows;
 				aface.RB = cvPoint(aface.Width, aface.Height);
 
-				images++;
+				sscanf ( &de->d_name[prefix.length()], "%d", &imageNum);
 				cout << "Eye check " << de->d_name << " ("
-                    << images << ") ";
+                    << images << ") "<< endl;
 				IplImage image(img);
 				IplImage *dummy = cvCreateImage(cvSize(img.rows, img.cols), 
 						8, 3);
@@ -55,7 +58,7 @@ int main( int argc, char **argv)
 				if(newDetector.checkEyeDetected() != true) {
 					char s[100];
 					snprintf( s, sizeof(s),
-							"noeye_%d.jpg", images);
+							"noeye_%d.jpg", imageNum);
 					cvSaveImage(s, &image);
 				} else {
 					eyes++;
