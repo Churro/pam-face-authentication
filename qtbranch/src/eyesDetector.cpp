@@ -108,10 +108,10 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
     int count = nested_objects.size();
 #ifdef DEBUG
     std::cout << "Cascade " << HAAR_CASCADE_EYE << " Found " <<  count << std::endl;
-    std::cout << "locations :";
+    std::cout << "locations :" << std::endl;
     for(int j = 0; j < nested_objects.size(); j++)
     {
-        std::cout << "i:"<< j << " " << nested_objects[j] << std::endl;
+        std::cout << "\ti:"<< j << " " << nested_objects[j] << std::endl;
     }
 #endif
     if(count < 2)
@@ -122,10 +122,10 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
         count = nested_objects.size();
 #ifdef DEBUG
         std::cout << "Cascade " << HAAR_CASCADE_EYE_2 << " Found " <<  count << std::endl;
-        std::cout << "locations :";
+        std::cout << "locations :" << std::endl;
         for(int j = 0; j < nested_objects.size(); j++)
         {
-            std::cout << "i:"<< j << " " << nested_objects[j] << std::endl;
+            std::cout << "\ti:"<< j << " " << nested_objects[j] << std::endl;
         }
 #endif
     }
