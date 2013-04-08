@@ -16,9 +16,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define DEBUG 1
 #include <string>
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
 #include <iostream>
 #endif
 #include <cv.h>
@@ -43,10 +42,6 @@ eyesDetector::eyesDetector() : bothEyesDetected_(false)
     nested_cascade_.load(HAAR_CASCADE_EYE.c_str());
     nested_cascade_2_.load(HAAR_CASCADE_EYE_2.c_str());
     
-    // Setup the storage and clear it
-    storage_ = cvCreateMemStorage(0);
-    cvClearMemStorage(storage_);
-    
     // Initialize eyesInformation Params
     eyesInformation.LE = cvPoint(0, 0);
     eyesInformation.RE = cvPoint(0, 0);
@@ -56,7 +51,6 @@ eyesDetector::eyesDetector() : bothEyesDetected_(false)
 //------------------------------------------------------------------------------
 eyesDetector::~eyesDetector()
 {
-    if(storage_) cvReleaseMemStorage(&storage_);
 }
 
 //------------------------------------------------------------------------------
@@ -72,7 +66,6 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
     eyesInformation.RE = cvPoint(0, 0);
     eyesInformation.Length = 0;
 
-    cvClearMemStorage(storage_);
     
     // If no image is given, return
     if(input == 0) return;
@@ -98,7 +91,7 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
     if( gray_scale) cvResize(gray, gray_scale, CV_INTER_LINEAR);
     
     // Perform histogram equalization (increases contrast and dynamic range)
-    cvSmooth(working, working, CV_GAUSSIAN,3,3);
+    //cvSmooth(working, working, CV_GAUSSIAN,3,3);
     cvEqualizeHist(working, working);    
     
     std::vector<cv::Rect> nested_objects;
@@ -106,7 +99,7 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
     nested_cascade_.detectMultiScale( working, nested_objects, 1.1, 2, 0, cvSize(20, 20));
     
     int count = nested_objects.size();
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
     std::cout << "Cascade " << HAAR_CASCADE_EYE << " Found " <<  count << std::endl;
     std::cout << "locations :" << std::endl;
     for(int j = 0; j < nested_objects.size(); j++)
@@ -120,7 +113,7 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
         nested_cascade_2_.detectMultiScale( working, nested_objects, 1.1, 2, 0, cvSize(20, 20));
           
         count = nested_objects.size();
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
         std::cout << "Cascade " << HAAR_CASCADE_EYE_2 << " Found " <<  count << std::endl;
         std::cout << "locations :" << std::endl;
         for(int j = 0; j < nested_objects.size(); j++)
@@ -157,7 +150,7 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
                     eyesInformation.LE.x = xCordinate;
                     eyesInformation.LE.y = yCordinate;
 
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
                     cvCircle(fullImage, cvPoint(eyesInformation.LE.x,eyesInformation.LE.y), 
                         4, CV_RGB(0,255,0), 1, 8, 0);
 #endif
@@ -169,7 +162,7 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
                     eyesInformation.RE.x = xCordinate;
                     eyesInformation.RE.y = yCordinate;
 
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
                     cvCircle( fullImage, cvPoint(eyesInformation.RE.x,eyesInformation.RE.y), 
                       4, CV_RGB(0,255,0), 1, 8, 0);
 #endif
@@ -186,7 +179,7 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
         }
     }
 
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
     std::cout << "Eyes Len ("<< eyesInformation.Length <<") LE @(" << eyesInformation.LE.x
         << "," << eyesInformation.LE.y << ") RE @(" << eyesInformation.RE.x <<","
         << eyesInformation.RE.y<< ")" << std::endl;

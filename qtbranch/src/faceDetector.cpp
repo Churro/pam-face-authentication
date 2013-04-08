@@ -24,7 +24,6 @@
 
 using std::string;
 
-#define DEBUG 1
 
 // Frontal face cascade
 const string HAAR_CASCADE_FACE = PKGDATADIR "/haarcascade.xml";
@@ -126,7 +125,7 @@ void faceDetector::runFaceDetector(IplImage* input)
                 fp2 = faceInformation.RB;
             */
         }
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
         else
           cvRectangle(input, faceInformation.LT, cvPoint(input->width, input->height), CV_RGB(0,255,0), 3, 8, 0);
 #endif
@@ -150,7 +149,7 @@ IplImage* faceDetector::clipDetectedFace(IplImage* input)
       cvSize(faceInformation.Width, faceInformation.Height),
       IPL_DEPTH_8U, input->nChannels);
     
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
     cvRectangle(input, faceInformation.LT, faceInformation.RB, CV_RGB(255,0,0), 3, 8, 0);
 #endif
 

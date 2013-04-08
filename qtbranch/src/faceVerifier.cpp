@@ -40,7 +40,6 @@
 #include "qtUtils.h"
 #include "pam_face_defines.h"
 
-#define DEBUG
 
 //------------------------------------------------------------------------------
 faceVerifyer::faceVerifyer(QWidget* parent) :
@@ -181,7 +180,7 @@ void faceVerifyer::removeSelected()
         QString dat = item->data(Qt::UserRole).toString();
         
         char *ptr = dat.toAscii().data();
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
         printf("%s\n", ptr);
 #endif
 
@@ -273,7 +272,7 @@ void faceVerifyer::timerEvent(QTimerEvent*)
             if (found > 0 ) faceVerified++;
             cvReleaseImage(&clippedFace);
         }
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
             printf("Verified %d, %d, %d (%s)\n", faceVerified, imageReturned, faceFound, found ? "Found" : "NotFound");
 #endif
         QString qs = " ";

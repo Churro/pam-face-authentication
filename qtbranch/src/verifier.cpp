@@ -37,7 +37,6 @@
 #define EYE_MACE_SIZE 64
 #define INSIDE_FACE_MACE_SIZE 64
 
-#define DEBUG
 
 using std::string;
 using std::list;
@@ -204,7 +203,7 @@ void verifier::createBiometricModels(char* setName = NULL)
 
         int Nx = floor((averageImage->width )/35);
         int Ny = floor((averageImage->height)/30);
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
         printf("%d %d A \n",Nx,Ny);
 #endif
         CvMat* featureLBPHistMatrix = cvCreateMat(Nx*Ny*59, 1, CV_64FC1);
@@ -240,7 +239,7 @@ void verifier::createBiometricModels(char* setName = NULL)
                         if((hist1 + hist2) != 0) 
                             chiSquare += (pow(hist1 - hist2, 2) / (hist1 + hist2));
 
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
                         printf("chiSquare %e \n", chiSquare);
 #endif
                     }
@@ -291,21 +290,21 @@ void verifier::createBiometricModels(char* setName = NULL)
         
         for(int j = 0; j < 4; j++)
         {
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
             printf("Variance (%d)", j);
 #endif
             for(int i = 0; i < 5; i++)
             {
                 CvScalar s1 = cvGet2D(variance, 0, j*5 + i);
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
                 printf("%e\t", s1.val[0]);
 #endif
             }
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
             printf("\n");
 #endif
         }
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
         printf("\n");
 #endif
 
@@ -375,7 +374,7 @@ void verifier::createBiometricModels(char* setName = NULL)
         faceMaceFilter.thresholdPCER = maceFaceValuesPCER->front();
         faceMaceFilter.thresholdPSLR = maceFaceValuesPSLR->front() 
             + (avFace-maceFaceValuesPSLR->front()) / 10;
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
         printf("%d %d \n", maceFaceValuesPSLR->front(), avFace);
 #endif
         faceMaceFilter.filter = maceFilterFace;
@@ -386,7 +385,7 @@ void verifier::createBiometricModels(char* setName = NULL)
             + (avEye-maceEyeValuesPSLR->front()) / 10;
         eyeMaceFilter.filter = maceFilterEye;
         snprintf(eyeMaceFilter.maceFilterName, 300, "%s_eye_mace.xml", temp->setName[i]);
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
         printf("%d %d \n",maceEyeValuesPSLR->front(), avEye);
 #endif
 
@@ -396,7 +395,7 @@ void verifier::createBiometricModels(char* setName = NULL)
         insideFaceMaceFilter.filter = maceFilterInsideFace;
         
         snprintf(insideFaceMaceFilter.maceFilterName, 300, "%s_inside_face_mace.xml",temp->setName[i]);
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
         printf("%d %d \n",maceInsideFaceValuesPSLR->front(),avInsideFace);
 #endif
 
@@ -520,7 +519,7 @@ int verifier::verifyFace(IplImage* faceMain)
     d = opendir(facesDirectory.c_str());
     if (!d) return -2;
 
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
     printf("\nChecking faces: \n");
 #endif
 
@@ -570,7 +569,7 @@ int verifier::verifyFace(IplImage* faceMain)
     {
         if (!((strcmp(de->d_name, ".") == 0) || (strcmp(de->d_name, "..") == 0)))
         {
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
             printf("model %s -- ",de->d_name);
 #endif
             k++;
@@ -598,13 +597,13 @@ int verifier::verifyFace(IplImage* faceMain)
 
             // double thresholdLBP = MAX_THRESHOLD_LBP-(newConfig->percentage*10000);
             double thresholdLBP = calculateThreshold(lbpThresh, newConfig->percentage);
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
             printf("%e %e %e", val, (thresholdLBP+step), step);
 #endif
 
             if (val < (thresholdLBP+step))
             {
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
                 printf(" match\n");
 #endif
                 snprintf(facePath, 300, "%s/%s_face_mace.xml", modelDirectory.c_str(), de->d_name);
@@ -642,7 +641,7 @@ int verifier::verifyFace(IplImage* faceMain)
                 int pcent = int(((double)value / (double)PSLR)*100);
                 int lowerPcent = int(newConfig->percentage*100.0);
                 int upperPcent = int((newConfig->percentage+((1-newConfig->percentage)/4))*100.0);
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
                 printf("Current Percent %d Lower %d Upper %d\n", pcent, lowerPcent,upperPcent);
 #endif
 
@@ -658,7 +657,7 @@ int verifier::verifyFace(IplImage* faceMain)
                 {
                     double newThres = thresholdLBP + (double(double(pcent-lowerPcent) /
                                                       double(upperPcent-lowerPcent))*double(step));
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
                     printf("New Thres %e\n", newThres);
 #endif
 
@@ -669,14 +668,14 @@ int verifier::verifyFace(IplImage* faceMain)
                     }
                 }
 
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
                 int percentage = int( (double(value)/double(PSLR))*100.0);
                 printf("%d \n",percentage);
 #endif
                 cvReleaseFileStorage(&fileStorage);
                 cvReleaseMat(&maceFilterUser);
             }
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
             else
             {
                 printf(" unmatched (%5.2f)\n", val - (thresholdLBP+step));
@@ -695,7 +694,7 @@ int verifier::verifyFace(IplImage* faceMain)
     if (k == 0) return -1;
     if (count > 0)
     {
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
         printf("\n Found \n");
 #endif
         return count;

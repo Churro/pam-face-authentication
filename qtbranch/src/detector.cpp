@@ -26,7 +26,6 @@
 #define eyeTopPad 30
 #define eyeBottomPad 120
 
-#define DEBUG
 using std::bad_alloc;
 
 //------------------------------------------------------------------------------
@@ -330,7 +329,7 @@ int detector::runDetector(IplImage* input)
         + pow(eyesInformation.RE.x - eyesInformation.LE.x, 2));
 
       prevlengthEye_ = eyesInformation.Length;
-#ifdef DEBUG
+#ifdef PFA_GEN_STATS
       cvLine(input, eyesInformation.LE, eyesInformation.RE, cvScalar(0,255,0), 4);
 #endif
     }
