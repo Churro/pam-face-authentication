@@ -84,7 +84,7 @@ class faceTrainer: public QMainWindow
       /**
       * OpenCV webcam object
       */
-      cv::VideoCapture webcam;
+      opencvWebcam webcam;
       
       /**
       * Detector object

@@ -252,22 +252,25 @@ void faceVerifyer::timerEvent(QTimerEvent*)
 {
     try {
         static webcamImagePaint newWebcamImagePaint;
+        cv::Mat img;
+    
+        webcam >> img;
+        IplImage queryImage(img);
 
-        IplImage* queryImage = webcam.queryFrame();
-        if (newDetector.runDetector(queryImage) == -1)
+        if (newDetector.runDetector(&queryImage) == -1)
             return;
         imageReturned++;
 
 
-        newWebcamImagePaint.paintCyclops(queryImage, 
+        newWebcamImagePaint.paintCyclops(&queryImage, 
                 newDetector.eyesInformation.LE, newDetector.eyesInformation.RE);
-        newWebcamImagePaint.paintEllipse(queryImage, 
+        newWebcamImagePaint.paintEllipse(&queryImage, 
                 newDetector.eyesInformation.LE, newDetector.eyesInformation.RE);
 
         int found = 0;
         if (newDetector.checkFaceDetected() > 0 ) {
             faceFound++;
-            IplImage *clippedFace = newDetector.clipFace(queryImage);
+            IplImage *clippedFace = newDetector.clipFace(&queryImage);
             found = newVerifier.verifyFace(clippedFace);
             if (found > 0 ) faceVerified++;
             cvReleaseImage(&clippedFace);
@@ -291,7 +294,7 @@ void faceVerifyer::timerEvent(QTimerEvent*)
                 break;
         }
         setIbarText( qs);
-        QImage* qm = QImageIplImageCvt(queryImage);
+        QImage* qm = QImageIplImageCvt(&queryImage);
 
         setQImageWebcam(qm);
 

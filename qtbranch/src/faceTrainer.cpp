@@ -83,7 +83,7 @@ faceTrainer::~faceTrainer()
 void faceTrainer::showTab1()
 {
     killTimer(timerId);
-    webcam.release();
+    webcam.stopCamera();
 
     ui.stkWg->setCurrentIndex(0);
 }
@@ -91,7 +91,7 @@ void faceTrainer::showTab1()
 //------------------------------------------------------------------------------
 void faceTrainer::showTab2()
 {
-    if(webcam.open(0) == true)
+    if(webcam.startCamera() == true)
     {
         ui.stkWg->setCurrentIndex(1);
         populateQList();
@@ -115,7 +115,9 @@ void faceTrainer::showTab2()
 //------------------------------------------------------------------------------
 void faceTrainer::showTab3()
 {
+    killTimer(timerId);
     ui.stkWg->setCurrentIndex(2);
+    webcam.stopCamera();
 }
 
 //------------------------------------------------------------------------------
@@ -276,45 +278,52 @@ void faceTrainer::setIbarText(QString message)
 //------------------------------------------------------------------------------
 void faceTrainer::timerEvent(QTimerEvent*)
 {
-    static webcamImagePaint newWebcamImagePaint;
-    Mat img;
-    
-    webcam >> img;
-    IplImage queryImage(img);
+	try {
+		static webcamImagePaint newWebcamImagePaint;
+		Mat img;
 
-    if (newDetector.runDetector(&queryImage) == -1 )
-        return; // Try again another day
+		webcam >> img;
+		IplImage queryImage(img);
 
-    setIbarText(getQString(newDetector.queryMessage()));
-    
-    newWebcamImagePaint.paintCyclops(&queryImage, 
-        newDetector.eyesInformation.LE, newDetector.eyesInformation.RE);
-    newWebcamImagePaint.paintEllipse(&queryImage, 
-        newDetector.eyesInformation.LE, newDetector.eyesInformation.RE);
+		if (newDetector.runDetector(&queryImage) == -1 )
+			return; // Try again another day
 
-    /* cvLine(&queryImage, 
-          newDetector.eyesInformation.LE, newDetector.eyesInformation.RE, 
-          cvScalar(0,255,0), 4);*/
-    // newVerifier.verifyFace(newDetector.clipFace(&queryImage));
-    QImage* qm = QImageIplImageCvt(&queryImage);
+		setIbarText(getQString(newDetector.queryMessage()));
 
-    if(newDetector.finishedClipFace() == true)
-    {
-        setIbarText(tr("Processing Faces, Please Wait ..."));
-        // cvWaitKey(1000);
-        newVerifier.addFaceSet(newDetector.returnClipedFace(), FACE_COUNT);
-        setIbarText(tr("Processing Completed."));
+		newWebcamImagePaint.paintCyclops(&queryImage, 
+				newDetector.eyesInformation.LE, newDetector.eyesInformation.RE);
+		newWebcamImagePaint.paintEllipse(&queryImage, 
+				newDetector.eyesInformation.LE, newDetector.eyesInformation.RE);
 
-        captureClick();
-        populateQList();
-    }
+		/* cvLine(&queryImage, 
+		   newDetector.eyesInformation.LE, newDetector.eyesInformation.RE, 
+		   cvScalar(0,255,0), 4);*/
+		// newVerifier.verifyFace(newDetector.clipFace(&queryImage));
+		QImage* qm = QImageIplImageCvt(&queryImage);
 
-    setQImageWebcam(qm);
+		if(newDetector.finishedClipFace() == true)
+		{
+			setIbarText(tr("Processing Faces, Please Wait ..."));
+			// cvWaitKey(1000);
+			newVerifier.addFaceSet(newDetector.returnClipedFace(), FACE_COUNT);
+			setIbarText(tr("Processing Completed."));
 
-    cvWaitKey(1);
-    // sleep(1);
+			captureClick();
+			populateQList();
+		}
 
-    delete qm;
+		setQImageWebcam(qm);
+
+		cvWaitKey(1);
+		// sleep(1);
+
+		delete qm;
+	} catch ( std::exception &e) {
+		qFatal( "Standard error exception (%s)",
+				e.what());
+	} catch ( ... ) {
+		qFatal( "Unknown exception");
+	}
 }
 // vim: set ts:4 sw:4 et ai
 
