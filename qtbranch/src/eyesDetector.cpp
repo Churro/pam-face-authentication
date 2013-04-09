@@ -70,7 +70,7 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
     // If no image is given, return
     if(input == 0) return;
 	if ( nested_cascade_.empty() || nested_cascade_2_.empty()) {
-		std::cout << "Either " << HAAR_CASCADE_EYE << " or "
+		std::cerr << "Either " << HAAR_CASCADE_EYE << " or "
 			<< HAAR_CASCADE_EYE_2 << " missing" << std::endl;
 		return;
 	}

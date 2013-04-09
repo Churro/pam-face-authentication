@@ -124,8 +124,8 @@ void faceDetector::runFaceDetector(IplImage* input)
             cvRectangle(input, faceInformation.LT, cvPoint(input->width, input->height), CV_RGB(0,255,0), 3, 8, 0);
 #endif
     } else {
-	    std::cout << "Cascase " << HAAR_CASCADE_FACE
-		    << "Not Found" << std::endl;
+	    std::cerr << "Cascase " << HAAR_CASCADE_FACE
+		    << " Not Found" << std::endl;
     }
 
     cvReleaseImage(&gray);
