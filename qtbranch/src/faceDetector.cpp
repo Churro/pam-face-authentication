@@ -106,29 +106,32 @@ void faceDetector::runFaceDetector(IplImage* input)
             }
         }
 
-        if(maxI != -1)
-        {
-            CvRect* r = (CvRect*)cvGetSeqElem(faces, maxI);
-            
-            // Set the dimensions of the face and scale them
-            faceInformation.LT.x = (r->x) * scale;
-            faceInformation.LT.y = (r->y) * scale;
-            faceInformation.RB.x = (r->x + r->width) * scale;
-            faceInformation.RB.y = (r->y + r->height) * scale;
-            faceInformation.Width = (r->width) * scale;
-            faceInformation.Height = (r->height) * scale;
-        
-            //IplImage* in = clipDetectedFace(input);
-            //faceTracker.setModel(in);
-            /* static CvPoint fp1, fp2;
-                fp1 = faceInformation.LT;
-                fp2 = faceInformation.RB;
-            */
-        }
+	if(maxI != -1)
+	{
+		CvRect* r = (CvRect*)cvGetSeqElem(faces, maxI);
+
+		// Set the dimensions of the face and scale them
+		faceInformation.LT.x = (r->x) * scale;
+		faceInformation.LT.y = (r->y) * scale;
+		faceInformation.RB.x = (r->x + r->width) * scale;
+		faceInformation.RB.y = (r->y + r->height) * scale;
+		faceInformation.Width = (r->width) * scale;
+		faceInformation.Height = (r->height) * scale;
+
+		//IplImage* in = clipDetectedFace(input);
+		//faceTracker.setModel(in);
+		/* static CvPoint fp1, fp2;
+		   fp1 = faceInformation.LT;
+		   fp2 = faceInformation.RB;
+		 */
+	}
 #ifdef PFA_GEN_STATS
-        else
-          cvRectangle(input, faceInformation.LT, cvPoint(input->width, input->height), CV_RGB(0,255,0), 3, 8, 0);
+	else
+		cvRectangle(input, faceInformation.LT, cvPoint(input->width, input->height), CV_RGB(0,255,0), 3, 8, 0);
 #endif
+    } else {
+	    std::cout << "Cascase " << HAAR_CASCADE_FACE
+		    << "Not Found" << std::endl;
     }
 
     cvReleaseImage(&gray);
