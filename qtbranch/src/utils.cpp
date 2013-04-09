@@ -1796,7 +1796,7 @@ double CenterofMass(IplImage* src,int flagXY)
     int x=0;
     int y=0;
     uchar Intensity;
-    double sumPixels[400];
+    double sumPixels[src->width*src->height];
     double totalX2=0;
     double totalX1=0;
     double totalX0=0;
