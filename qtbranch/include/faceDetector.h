@@ -24,12 +24,7 @@ class faceDetector
     /**
     * OpenCV cascade structure
     */
-    CvHaarClassifierCascade* cascade_;
-    
-    /**
-    * Storage - Work area for the OpenCV detection algorithm
-    */
-    CvMemStorage* storage_;
+    cv::CascadeClassifier cascade_;
     
     /**
     * Copy constructor

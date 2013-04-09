@@ -32,12 +32,8 @@ const string HAAR_CASCADE_FACE = PKGDATADIR "/haarcascade.xml";
 faceDetector::faceDetector()
 {
     // Load the classifier
-    cascade_ = (CvHaarClassifierCascade*)cvLoad(HAAR_CASCADE_FACE.c_str(), 0, 0, 0);
+    cascade_.load(HAAR_CASCADE_FACE.c_str());
     
-    // Setup the storage and clear it
-    storage_ = cvCreateMemStorage(0);
-    cvClearMemStorage(storage_);
-
     // Initialize faceInformation params
     faceInformation.LT = cvPoint(0, 0);
     faceInformation.RB = cvPoint(0, 0);
@@ -48,8 +44,6 @@ faceDetector::faceDetector()
 //------------------------------------------------------------------------------
 faceDetector::~faceDetector()
 {
-    if(cascade_) cvReleaseHaarClassifierCascade(&cascade_);
-    if(storage_) cvReleaseMemStorage(&storage_);
 }
 
 //------------------------------------------------------------------------------
@@ -65,7 +59,6 @@ void faceDetector::runFaceDetector(IplImage* input)
     faceInformation.Width = 0;
     faceInformation.Height = 0;
     
-    cvClearMemStorage(storage_);
     
     // If no image is given, return
     if(input == 0) return;
@@ -83,51 +76,52 @@ void faceDetector::runFaceDetector(IplImage* input)
     // Perform histogram equalization (increases contrast and dynamic range)
     cvEqualizeHist(small_img, small_img);
     
-    if(cascade_)
+    if(!cascade_.empty())
     {
-        CvSeq* faces = cvHaarDetectObjects(small_img, cascade_, storage_, 1.1, 2, 0
-          // |CV_HAAR_FIND_BIGGEST_OBJECT
-          // |CV_HAAR_DO_ROUGH_SEARCH
-          |CV_HAAR_DO_CANNY_PRUNING
-          // |CV_HAAR_SCALE_IMAGE
-          ,
-          cvSize(80 / scale, 80 / scale) );
-        
-        for(int i = 0; i < (faces ? faces->total : 0); i++)
+        std::vector<cv::Rect> faces;
+        cascade_.detectMultiScale( small_img, faces, 1.1, 2, 0 
+            // |CV_HAAR_FIND_BIGGEST_OBJECT
+            // |CV_HAAR_DO_ROUGH_SEARCH
+            |CV_HAAR_DO_CANNY_PRUNING
+            // |CV_HAAR_SCALE_IMAGE
+            ,
+            cvSize(80 / scale, 80 / scale) );
+
+        for(int i = 0; i < faces.size() ; i++)
         {
             // Create a new rectangle for the face
-            CvRect* r = (CvRect*)cvGetSeqElem(faces, maxI);
+            CvRect r = faces[i];
 
             // When looping faces, select the biggest one
-            if(max0 < (r->width * r->height));
+            if(max0 < (r.width * r.height));
             {
-                max0 = (r->width * r->height);
+                max0 = (r.width * r.height);
                 maxI = i;
             }
         }
 
-	if(maxI != -1)
-	{
-		CvRect* r = (CvRect*)cvGetSeqElem(faces, maxI);
+        if(maxI != -1)
+        {
+            CvRect r = faces[maxI];
 
-		// Set the dimensions of the face and scale them
-		faceInformation.LT.x = (r->x) * scale;
-		faceInformation.LT.y = (r->y) * scale;
-		faceInformation.RB.x = (r->x + r->width) * scale;
-		faceInformation.RB.y = (r->y + r->height) * scale;
-		faceInformation.Width = (r->width) * scale;
-		faceInformation.Height = (r->height) * scale;
+            // Set the dimensions of the face and scale them
+            faceInformation.LT.x = (r.x) * scale;
+            faceInformation.LT.y = (r.y) * scale;
+            faceInformation.RB.x = (r.x + r.width) * scale;
+            faceInformation.RB.y = (r.y + r.height) * scale;
+            faceInformation.Width = (r.width) * scale;
+            faceInformation.Height = (r.height) * scale;
 
-		//IplImage* in = clipDetectedFace(input);
-		//faceTracker.setModel(in);
-		/* static CvPoint fp1, fp2;
-		   fp1 = faceInformation.LT;
-		   fp2 = faceInformation.RB;
-		 */
-	}
+            //IplImage* in = clipDetectedFace(input);
+            //faceTracker.setModel(in);
+            /* static CvPoint fp1, fp2;
+               fp1 = faceInformation.LT;
+               fp2 = faceInformation.RB;
+             */
+        }
 #ifdef PFA_GEN_STATS
-	else
-		cvRectangle(input, faceInformation.LT, cvPoint(input->width, input->height), CV_RGB(0,255,0), 3, 8, 0);
+        else
+            cvRectangle(input, faceInformation.LT, cvPoint(input->width, input->height), CV_RGB(0,255,0), 3, 8, 0);
 #endif
     } else {
 	    std::cout << "Cascase " << HAAR_CASCADE_FACE
