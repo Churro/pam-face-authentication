@@ -49,7 +49,7 @@
      <string notr="true"/>
     </property>
     <property name="currentIndex">
-     <number>2</number>
+     <number>1</number>
     </property>
     <widget class="QWidget" name="first">
      <widget class="QLabel" name="lbl_number">
@@ -215,7 +215,7 @@ font: 75 36pt &quot;Serif&quot;;
           <string>color: rgb(126, 126, 126);</string>
          </property>
          <property name="text">
-          <string>No glass or hat as it might affect the recognition rate</string>
+          <string>No glasses or hats as it may affect the recognition rate</string>
          </property>
          <property name="textFormat">
           <enum>Qt::PlainText</enum>
@@ -358,7 +358,7 @@ font: 75 36pt &quot;Serif&quot;;
         <x>39</x>
         <y>500</y>
         <width>671</width>
-        <height>41</height>
+        <height>42</height>
        </rect>
       </property>
       <layout class="QGridLayout" name="gridLayout_4">
@@ -495,7 +495,7 @@ font: 75 36pt &quot;Serif&quot;;
         <x>10</x>
         <y>460</y>
         <width>731</width>
-        <height>69</height>
+        <height>72</height>
        </rect>
       </property>
       <layout class="QGridLayout" name="gridLayout_5">
@@ -740,7 +740,7 @@ font: 75 36pt &quot;Serif&quot;;
        <item row="1" column="1">
         <widget class="QPushButton" name="pb_capture">
          <property name="text">
-          <string>Verify</string>
+          <string>Capture Images</string>
          </property>
          <property name="icon">
           <iconset resource="../../../graphics.qrc">
@@ -768,6 +768,49 @@ font: 75 36pt &quot;Serif&quot;;
         </spacer>
        </item>
       </layout>
+     </widget>
+     <widget class="QLabel" name="lbl_ibar_2">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>540</y>
+        <width>721</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>436</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="font">
+       <font>
+        <family>Serif</family>
+        <pointsize>14</pointsize>
+        <weight>50</weight>
+        <italic>true</italic>
+        <bold>false</bold>
+       </font>
+      </property>
+      <property name="autoFillBackground">
+       <bool>false</bool>
+      </property>
+      <property name="styleSheet">
+       <string notr="true"/>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+      <property name="margin">
+       <number>0</number>
+      </property>
      </widget>
     </widget>
     <widget class="QWidget" name="third">
@@ -979,7 +1022,7 @@ Developers</string>
         <x>37</x>
         <y>448</y>
         <width>671</width>
-        <height>41</height>
+        <height>42</height>
        </rect>
       </property>
       <layout class="QGridLayout" name="gridLayout_2">

@@ -40,6 +40,12 @@
 #include "qtUtils.h"
 #include "pam_face_defines.h"
 
+#include <cstdio>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <errno.h>
+#include <dirent.h>
+#include <pwd.h>
 
 //------------------------------------------------------------------------------
 faceVerifyer::faceVerifyer(QWidget* parent) :
@@ -47,6 +53,7 @@ faceVerifyer::faceVerifyer(QWidget* parent) :
     imageReturned(0),
     faceFound(0),
     faceVerified(0),
+    imageSave(false),
     timerId(0)
 {
     ui.setupUi(this);
@@ -100,6 +107,8 @@ void faceVerifyer::showTab3()
 //------------------------------------------------------------------------------
 void faceVerifyer::showTab2()
 {
+    connect(ui.pb_capture, SIGNAL(clicked()), this, SLOT(captureClick()));
+
     if(webcam.startCamera() == true)
     {
         ui.stkWg->setCurrentIndex(1);
@@ -179,12 +188,8 @@ void faceVerifyer::removeSelected()
         QListWidgetItem* item = *i;
         QString dat = item->data(Qt::UserRole).toString();
         
-        char *ptr = dat.toAscii().data();
-#ifdef PFA_GEN_STATS
-        printf("%s\n", ptr);
-#endif
 
-        newVerifier.removeFaceSet(ptr);
+        newVerifier.removeFaceSet( dat.toAscii().data());
     }
     ui.lv_thumbnails->clear();
 
@@ -194,18 +199,17 @@ void faceVerifyer::removeSelected()
 //------------------------------------------------------------------------------
 void faceVerifyer::captureClick()
 {
-    static int latch = 0;
     
-    if(latch == 0)
+    if(!imageSave)
     {
-        ui.pb_capture->setText(tr("Cancel"));
-        latch = 1;
+        ui.pb_capture->setText(tr("Cancel Saving"));
+        imageSave = true;
         newDetector.startClipFace();
     }
     else
     {
-        ui.pb_capture->setText(tr("Capture"));
-        latch = 0;
+        ui.pb_capture->setText(tr("Capture Failures"));
+        imageSave = false;
         newDetector.stopClipFace();
     }
 }
@@ -241,6 +245,25 @@ QString faceVerifyer::getQString(int messageIndex)
     return 0;
 }
 
+void faceVerifyer::saveImage( cv::Mat image) {
+	static uid_t userID = getuid();
+	static passwd* userStruct = getpwuid(getuid());
+	static std::string dir (userStruct->pw_dir);
+	dir.append("/" PFA_PATH "/diags/");
+	const char *prefix = "fvsav";
+	int r = mkdir(dir.c_str(), 0700);
+	if ( !r || errno == EEXIST ) {
+		char * name = tempnam(dir.c_str(), prefix);
+		if ( name) {
+			char fullname[300];
+			snprintf( fullname, 300, "%s.jpg", name); 
+			imwrite( fullname, image);
+			free(name);
+		}
+	}
+
+}
+
 //------------------------------------------------------------------------------
 void faceVerifyer::setIbarText(QString message)
 {
@@ -270,26 +293,31 @@ void faceVerifyer::timerEvent(QTimerEvent*)
             cvReleaseImage(&clippedFace);
         }
 #ifdef PFA_GEN_STATS
-            printf("Verified %d, %d, %d (%s)\n", faceVerified, imageReturned, faceFound, verified > 0 ? "Found" : "NotFound");
+            printf("Verified %d out of %d with %d faces this one was (%s)\n", faceVerified, imageReturned, faceFound, verified > 0 ? "Found" : "NotFound");
 #endif
         QString qs = " ";
-	if ( faceFound) {
+	if ( faceFound) { // Anytime after the first face was found
+		if (verified > 0) {
+			qs = QString(tr("    Verified %1 / %2 faces in %3 images.").arg(faceVerified).arg(faceFound).arg(imageReturned, 3, 10, QChar(' ')));
+		} else {
+			if ( imageSave) {
+				saveImage(img);
+			}
+			qs = QString(tr("Not Verified %1 / %2 faces in %3 images.").arg(faceVerified).arg(faceFound).arg(imageReturned, 3, 10, QChar(' ')));
+		}
+	} else { // Otherwise give a helpfull setup message
 		switch (verified) {
-			case 0:
-				qs = QString(tr("Not Verified %1 / %2 faces in %3 images.").arg(faceVerified).arg(faceFound).arg(imageReturned, 3, 10, QChar(' ')));
-				break;
 			case -1:
 				qs = QString(tr(" Not Trained %1 / %2 faces in %3 images.").arg(faceVerified).arg(faceFound).arg(imageReturned, 3, 10, QChar(' ')));
 				break;
 			case -2:
 				qs = QString(tr(" No Data dir %1 / %2 faces in %3 images.").arg(faceVerified).arg(faceFound).arg(imageReturned, 3, 10, QChar(' ')));
 				break;
+			case 0:
 			default:
-				qs = QString(tr("    Verified %1 / %2 faces in %3 images.").arg(faceVerified).arg(faceFound).arg(imageReturned, 3, 10, QChar(' ')));
+				qs = getQString(newDetector.queryMessage());
 				break;
 		}
-	} else {
-		qs = getQString(newDetector.queryMessage());
 	}
         setIbarText( qs);
         newWebcamImagePaint.paintCyclops(&queryImage, 
@@ -304,7 +332,6 @@ void faceVerifyer::timerEvent(QTimerEvent*)
         cvWaitKey(1);
 
         delete qm;
-        /*cvReleaseImage(&queryImage);*/
     } catch ( std::exception &e) {
         qFatal( "Standard error exception (%s)",
                 e.what());

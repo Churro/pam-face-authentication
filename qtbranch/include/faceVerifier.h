@@ -18,6 +18,7 @@ class faceVerifyer: public QMainWindow
         int imageReturned;
         int faceFound;
         int faceVerified;
+        bool imageSave;
         static const int FACE_COUNT = 13;
 
         /**
@@ -42,7 +43,7 @@ class faceVerifyer: public QMainWindow
         void showTab3();
 
         /**
-         * Slot - Capture button click
+         * Slot - Capture Failures
          */
         void captureClick();
 
@@ -63,6 +64,10 @@ class faceVerifyer: public QMainWindow
          * timerEvent of MainWindow overload
          */
         void timerEvent(QTimerEvent*);      
+        /**
+         * Save an image
+         */
+         void saveImage( cv::Mat image);
 
     public:
         /**
