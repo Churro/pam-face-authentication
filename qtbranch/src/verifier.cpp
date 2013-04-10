@@ -414,7 +414,7 @@ void verifier::createBiometricModels(char* setName = NULL)
 
     }
     
-    delete temp;
+    releaseFaceSet( temp);
 
 }
 
@@ -440,9 +440,8 @@ string verifier::createSetDir() const
 }
 
 //------------------------------------------------------------------------------
-void verifier::addFaceSet(IplImage** set, int size)
+void verifier::addFaceSet(IplImage** set, int size, string dirNameUnique)
 {
-    string dirNameUnique = createSetDir();
     string dirName = facesDirectory;
     char filename[300];
 
@@ -452,11 +451,17 @@ void verifier::addFaceSet(IplImage** set, int size)
     {
         snprintf(filename, 300, "%s/%d.jpg", dirName.c_str(), i);
         cvSaveImage(filename, set[i]);
-        cvReleaseImage(&set[i]);
     }
 
     createBiometricModels((char*)dirNameUnique.c_str());
-    delete[] set;
+}
+
+//------------------------------------------------------------------------------
+string verifier::addFaceSet(IplImage** set, int size)
+{
+    string dirNameUnique = createSetDir();
+    addFaceSet(set, size, dirNameUnique);
+    return(dirNameUnique);
 }
 
 //------------------------------------------------------------------------------

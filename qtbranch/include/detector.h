@@ -3,6 +3,7 @@
 
 #include <string>
 #include "cv.h"
+#include "highgui.h"
 #include "tracker.h"
 #include "pam_face_defines.h"
 #include "faceDetector.h"
@@ -24,9 +25,9 @@ class detector: public faceDetector, public eyesDetector
     int boolClipFace_;
 
     /**
-    * Total number of faces to be clipped.
+    * Array of clipped face images
     */
-    int totalFaceClipNum_;
+    std::vector<IplImage *> clippedFaces;
     
     /**
     * Number of face images clipped till now.
@@ -106,11 +107,6 @@ class detector: public faceDetector, public eyesDetector
     virtual ~detector();
 
     /**
-    * Array of clipped face images
-    */
-    IplImage** clippedFace;
-
-    /**
     * Message index corresponding to different states
     */
     int messageIndex;
@@ -131,20 +127,12 @@ class detector: public faceDetector, public eyesDetector
     * Starts the clipping of detected faces
     * @param num total number of face images to be clipped
     */
-    void startClipFace(int num);
+    void startClipFace();
 
     /**
     * Stops the clipping
     */
     void stopClipFace();
-
-    /**
-    * Function to check if prespecified faces have been clipped
-    * @return 1 if success, 0 on failure
-    * On success, code should do the work on the images, 
-    * otherwise it might get lost forever
-    */
-    int finishedClipFace();
 
     /**
     * Function to run the detection / tracking algorithm on param image

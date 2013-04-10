@@ -19,6 +19,7 @@ class faceTrainer: public QMainWindow
       int timerId;
 	static const int FACE_COUNT = 13;
         
+	bool learning;
       /**
       * UI object of the face trainer main window
       */

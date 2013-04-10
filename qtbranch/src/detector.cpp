@@ -29,8 +29,8 @@
 using std::bad_alloc;
 
 //------------------------------------------------------------------------------
-detector::detector() : messageIndex(FACE_NOT_ACQUIRED), clippedFace(0), boolClipFace_(0), 
-  totalFaceClipNum_(0), clipFaceCounter_(0), prevlengthEye_(0), inAngle_(0),
+detector::detector() : messageIndex(FACE_NOT_ACQUIRED), boolClipFace_(0), 
+  prevlengthEye_(0), inAngle_(0),
   lengthEye_(0), widthEyeWindow_(0), heightEyeWindow_(0), 
   finishedClipFaceFlag_(0)
 {
@@ -39,7 +39,10 @@ detector::detector() : messageIndex(FACE_NOT_ACQUIRED), clippedFace(0), boolClip
 //------------------------------------------------------------------------------
 detector::~detector()
 {
-  if(clippedFace != 0) delete[] clippedFace;
+    while ( !clippedFaces.empty() ) {
+        cvReleaseImage( &clippedFaces.back());
+        clippedFaces.pop_back();
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -342,18 +345,8 @@ int detector::runDetector(IplImage* input)
 
   if(checkEyeDetected() == true && checkFaceDetected() == true && boolClipFace_ == true)
   {
-    if(clipFaceCounter_ < totalFaceClipNum_)
-    {
-      clippedFace[clipFaceCounter_] = clipFace(input);
-      clipFaceCounter_++;
+      clippedFaces.push_back(clipFace(input));
       messageIndex = FACE_CAPTURED;
-      /* sprintf(messageCaptureMessage, "Captured %d/%d faces.", 
-          totalFaceClipNum - clipFaceCounter_+1, totalFaceClipNum); */
-      if(clipFaceCounter_ == totalFaceClipNum_)
-      {
-        messageIndex = FACE_CAPTURE_FINISHED; // Image capturing finished
-      }
-    }
   }
 
   return 0;
@@ -362,58 +355,38 @@ int detector::runDetector(IplImage* input)
 //------------------------------------------------------------------------------
 int detector::getClipFaceCounter()
 {
-  return clipFaceCounter_;
-}
-
-//------------------------------------------------------------------------------
-int detector::finishedClipFace()
-{
-  if(totalFaceClipNum_ > 0 && clipFaceCounter_ >= totalFaceClipNum_  )
-  {
-    return 1;
-  }
-  else return 0;
+  return clippedFaces.size();
 }
 
 //------------------------------------------------------------------------------
 IplImage** detector::returnClipedFace()
 {
-  IplImage** temp = clippedFace;
-  clippedFace = 0;
+    IplImage** temp = new IplImage* [clippedFaces.size()];
+    for ( int i = 0; i < clippedFaces.size(); i++ ) {
+        temp[i] = clippedFaces[i];
 
-  return temp;
+    }
+
+    return temp;
 }
 
 //------------------------------------------------------------------------------
-void detector::startClipFace(int num)
+void detector::startClipFace()
 {
-  try
-  {
-    clippedFace = new IplImage* [num];
-  }
-  catch(bad_alloc&)
-  {
-    boolClipFace_ = false;
-  }
+    //Clear any oldones... they should be ignored
+    while ( !clippedFaces.empty() ) {
+        cvReleaseImage( &clippedFaces.back());
+        clippedFaces.pop_back();
+    }
   
-  totalFaceClipNum_ = num;
-  clipFaceCounter_ = 0;
   boolClipFace_ = true;
 }
 
 //------------------------------------------------------------------------------
 void detector::stopClipFace()
 {
-  totalFaceClipNum_ = 0;
-  clipFaceCounter_ = totalFaceClipNum_;
-  boolClipFace_ = 0;
+  boolClipFace_ = false;
   
-  for(int i = 0; i < totalFaceClipNum_; i++)
-  {
-    if(clippedFace[i] != 0) cvReleaseImage(&clippedFace[i]);
-  }
-  
-  if(clippedFace != 0) delete[] clippedFace;
 }
 
 //------------------------------------------------------------------------------

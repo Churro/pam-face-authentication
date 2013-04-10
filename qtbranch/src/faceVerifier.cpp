@@ -200,7 +200,7 @@ void faceVerifyer::captureClick()
     {
         ui.pb_capture->setText(tr("Cancel"));
         latch = 1;
-        newDetector.startClipFace(FACE_COUNT);
+        newDetector.startClipFace();
     }
     else
     {

@@ -100,7 +100,8 @@ class verifier
     * @param size, Size of set
     * @see createBiometricModels
     */
-    void addFaceSet(IplImage** set, int size);
+    std::string addFaceSet(IplImage** set, int size);
+    void addFaceSet(IplImage** set, int size, std::string name);
     //allFaces* getFaceImagesFromAllSet();
 
     /**

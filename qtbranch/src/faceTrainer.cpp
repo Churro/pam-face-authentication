@@ -41,7 +41,8 @@
 using namespace cv;
 
 //------------------------------------------------------------------------------
-faceTrainer::faceTrainer(QWidget* parent) : QMainWindow(parent), timerId(0)
+faceTrainer::faceTrainer(QWidget* parent) :
+	QMainWindow(parent), timerId(0), learning(false)
 {
     ui.setupUi(this);
     QDesktopWidget* desktop = QApplication::desktop();
@@ -209,10 +210,7 @@ void faceTrainer::removeSelected()
         QListWidgetItem* item = *i;
         QString dat = item->data(Qt::UserRole).toString();
         
-        char *ptr = dat.toAscii().data();
-        // printf("%s\n", ptr);
-
-        newVerifier.removeFaceSet(ptr);
+        newVerifier.removeFaceSet( dat.toAscii().data());
     }
     ui.lv_thumbnails->clear();
 
@@ -222,18 +220,17 @@ void faceTrainer::removeSelected()
 //------------------------------------------------------------------------------
 void faceTrainer::captureClick()
 {
-    static int latch = 0;
     
-    if(latch == 0)
+    if(!learning)
     {
         ui.pb_capture->setText(tr("Cancel"));
-        latch = 1;
-        newDetector.startClipFace(FACE_COUNT);
+        learning = true;
+        newDetector.startClipFace();
     }
     else
     {
         ui.pb_capture->setText(tr("Capture"));
-        latch = 0;
+        learning = false;
         newDetector.stopClipFace();
     }
 }
@@ -258,7 +255,7 @@ QString faceTrainer::getQString(int messageIndex)
         case FACE_FOUND:
             return QString(tr("Tracking in progress."));
         case FACE_CAPTURED:
-            return QString(tr("Captured %1 / %2 faces.").arg(FACE_COUNT-newDetector.getClipFaceCounter()+1).arg(FACE_COUNT));
+            return QString(tr("Captured %1 / %2 faces.").arg(newDetector.getClipFaceCounter()).arg(FACE_COUNT));
         case FACE_CAPTURE_FINISHED:
             return QString(tr("Capturing Image Finished."));
         case FACE_NOT_ACQUIRED:
@@ -281,14 +278,18 @@ void faceTrainer::timerEvent(QTimerEvent*)
 	try {
 		static webcamImagePaint newWebcamImagePaint;
 		Mat img;
+		int detected;
 
 		webcam >> img;
 		IplImage queryImage(img);
 
-		if (newDetector.runDetector(&queryImage) == -1 )
-			return; // Try again another day
+		detected = newDetector.runDetector(&queryImage);
 
 		setIbarText(getQString(newDetector.queryMessage()));
+
+		if (detected == -1 )
+			return; // Try again another day
+
 
 		newWebcamImagePaint.paintCyclops(&queryImage, 
 				newDetector.eyesInformation.LE, newDetector.eyesInformation.RE);
@@ -301,15 +302,28 @@ void faceTrainer::timerEvent(QTimerEvent*)
 		// newVerifier.verifyFace(newDetector.clipFace(&queryImage));
 		QImage* qm = QImageIplImageCvt(&queryImage);
 
-		if(newDetector.finishedClipFace() == true)
+		if(learning && newDetector.getClipFaceCounter() > FACE_COUNT)
 		{
+static string setname = "";
 			setIbarText(tr("Processing Faces, Please Wait ..."));
 			// cvWaitKey(1000);
-			newVerifier.addFaceSet(newDetector.returnClipedFace(), FACE_COUNT);
-			setIbarText(tr("Processing Completed."));
+			if ( setname.length() == 0) {
+				setname = newVerifier.addFaceSet(newDetector.returnClipedFace(), newDetector.getClipFaceCounter());
+				populateQList();
+			} else {
+				if((newDetector.getClipFaceCounter() % 6) == 0) {
+					newVerifier.addFaceSet(newDetector.returnClipedFace(), newDetector.getClipFaceCounter(), setname );
+				}
+				if( newVerifier.verifyFace(newDetector.clipFace(&queryImage)) == true) {
+					captureClick();
+					IplImage **imgs = newDetector.returnClipedFace();
+					int count = newDetector.getClipFaceCounter();
+					newVerifier.addFaceSet(imgs, count, setname );
+					setIbarText(tr("Processing Completed."));
+					setname = "";
+				}
+			}
 
-			captureClick();
-			populateQList();
 		}
 
 		setQImageWebcam(qm);
