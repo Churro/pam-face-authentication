@@ -45,7 +45,7 @@ void writeImageToMemory(IplImage* Input, char* Shared);
 /**
 * Start IPC Connections
 */
-void ipcStart();
+bool ipcStart();
 
 /**
 * Reset IPC Flags

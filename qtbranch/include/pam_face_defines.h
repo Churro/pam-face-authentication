@@ -42,10 +42,6 @@ Rewritten
 */
 #define IPC_KEY_STATUS 567813
 /**
-* Shared Memory Size for Image , 320X240
-*/
-#define IMAGE_SIZE 230400
-/**
 * Image Width of Webcam
 */
 #define IMAGE_WIDTH 320
@@ -53,6 +49,10 @@ Rewritten
 * Image Height of Webcam
 */
 #define IMAGE_HEIGHT 240
+/**
+* Shared Memory Size for Image
+*/
+#define IMAGE_SIZE IMAGE_WIDTH*IMAGE_HEIGHT*3
 
 //DEFAULT PARAMETERS FOR MACE FILTER PEAK TO SIDE LOBE RATIO
 

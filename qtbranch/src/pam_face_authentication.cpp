@@ -47,6 +47,7 @@
 // App related headers
 #include <stdio.h>
 #include <libintl.h> // gettext()
+#include <syslog.h>
 #include <X11/Xutil.h> // XDestroyImage()
 #include "pam_face_authentication.h"
 #include "pam_face_defines.h"
@@ -100,24 +101,32 @@ void resetFlags()
 }
 
 //------------------------------------------------------------------------------
-void ipcStart()
+bool ipcStart()
 {
     /*   IPC   */
     ipckey = IPC_KEY_IMAGE;
     shmid = shmget(ipckey, IMAGE_SIZE, IPC_CREAT | 0666);
     shared = (char *)shmat(shmid, NULL, 0);
+	if ( !shared) {
+		syslog( LOG_AUTH|LOG_CRIT, "No attach of shm %lx - %m", ipckey);
+	}
 
     ipckeyCommAuth = IPC_KEY_STATUS;
     shmidCommAuth = shmget(ipckeyCommAuth, sizeof(int), IPC_CREAT | 0666);
     commAuth = (int *)shmat(shmidCommAuth, NULL, 0);
+	if ( !commAuth) {
+		syslog( LOG_AUTH|LOG_CRIT, "No attach of shm %lx - %m", ipckeyCommAuth);
+	}
 
     *commAuth = 0;
+	return ( shared != NULL && commAuth != NULL);
     /*   IPC END  */
 }
 
 //------------------------------------------------------------------------------
 void writeImageToMemory(IplImage* img, char* shared)
 {
+	if ( !img || !shared) return;
     for(int n = 0; n < img->height; n++)
     {
         for(int m = 0; m < img->width; m++)
@@ -243,6 +252,7 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
     setlocale(LC_ALL, "");
     bindtextdomain("pam_face_authentication", PKGDATADIR "/locale");
     textdomain("pam_face_authentication");
+    openlog("pam_face_authentication", LOG_ODELAY, LOG_AUTH);
 
     Display* displayScreen;
     FILE* xlock = NULL;
@@ -288,7 +298,8 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
     }
     
     // removed Xauth stuff Not Needed for KDM or GDM
-    ipcStart();
+    if (!ipcStart())
+	    return PAM_AUTHINFO_UNAVAIL;
     resetFlags();
 
     username = (char *)calloc(strlen(user)+1, sizeof(char));
@@ -441,82 +452,85 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
         IplImage* queryImage = webcam.queryFrame();
 
         if(queryImage != 0)
-        {
-            newDetector.runDetector(queryImage);
+	{
+		newDetector.runDetector(queryImage);
 
-            if(sqrt(pow(newDetector.eyesInformation.LE.x - newDetector.eyesInformation.RE.x, 2) 
-              + (pow(newDetector.eyesInformation.LE.y-newDetector.eyesInformation.RE.y, 2))) > 28  
-            && sqrt(pow(newDetector.eyesInformation.LE.x-newDetector.eyesInformation.RE.x, 2) 
-              + (pow(newDetector.eyesInformation.LE.y-newDetector.eyesInformation.RE.y, 2))) < 120)
-            {
-                double yvalue = newDetector.eyesInformation.RE.y - newDetector.eyesInformation.LE.y;
-                double xvalue = newDetector.eyesInformation.RE.x - newDetector.eyesInformation.LE.x;
-                double ang = atan(yvalue / xvalue) * (180 / CV_PI);
+		if(sqrt(pow(newDetector.eyesInformation.LE.x - newDetector.eyesInformation.RE.x, 2) 
+					+ (pow(newDetector.eyesInformation.LE.y-newDetector.eyesInformation.RE.y, 2))) > 28  
+				&& sqrt(pow(newDetector.eyesInformation.LE.x-newDetector.eyesInformation.RE.x, 2) 
+					+ (pow(newDetector.eyesInformation.LE.y-newDetector.eyesInformation.RE.y, 2))) < 120)
+		{
+			double yvalue = newDetector.eyesInformation.RE.y - newDetector.eyesInformation.LE.y;
+			double xvalue = newDetector.eyesInformation.RE.x - newDetector.eyesInformation.LE.x;
+			double ang = atan(yvalue / xvalue) * (180 / CV_PI);
 
-                if(pow(ang, 2) < 200)
-                {
-                    IplImage* im = newDetector.clipFace(queryImage);
-                    send_msg(pamh, gettext("Verifying Face ..."));
-                    if(im != 0)
-                    {
-                        int val = newVerifier->verifyFace(im);
-                        if(val > 0)
-                        {
-                            *commAuth = STOPPED;
-                            // cvSaveImage("/home/rohan/new1.jpg",newDetector.clipFace(queryImage));
-                            send_msg(pamh, gettext("Verification successful."));
+			if(pow(ang, 2) < 200)
+			{
+				IplImage* im = newDetector.clipFace(queryImage);
+				send_msg(pamh, gettext("Verifying Face ..."));
+				if(im != 0)
+				{
+					int val = newVerifier->verifyFace(im);
+					if(val > 0)
+					{
+						*commAuth = STOPPED;
+						// cvSaveImage("/home/rohan/new1.jpg",newDetector.clipFace(queryImage));
+						send_msg(pamh, gettext("Verification successful."));
 
-                            if(enableX == 1)
-                            {
-                                XDestroyWindow(displayScreen, window);
-                                XCloseDisplay(displayScreen);
-                            }
+						if(enableX == 1)
+						{
+							XDestroyWindow(displayScreen, window);
+							XCloseDisplay(displayScreen);
+						}
 
-                            writeImageToMemory(zeroFrame, shared);
-                            webcam.stopCamera();
+						writeImageToMemory(zeroFrame, shared);
+						webcam.stopCamera();
 
-                            t2 = (double)cvGetTickCount();
+						t2 = (double)cvGetTickCount();
 
-                            while(t3 < 1300) t3 = (double)cvGetTickCount() - t2;
-                           
-                            return PAM_SUCCESS;
-                        }
-                    }
-                    cvReleaseImage(&im);
-                }
-                else send_msg(pamh, gettext("Align your face."));
+						while(t3 < 1300) t3 = (double)cvGetTickCount() - t2;
 
-                newWebcamImagePaint.paintCyclops(queryImage, 
-                  newDetector.eyesInformation.LE, newDetector.eyesInformation.RE);
-                newWebcamImagePaint.paintEllipse(queryImage, 
-                  newDetector.eyesInformation.LE, newDetector.eyesInformation.RE);
+						return PAM_SUCCESS;
+					}
+					cvReleaseImage(&im);
+				}
+			}
+			else send_msg(pamh, gettext("Align your face."));
 
-                //  cvLine(queryImage, newDetector.eyesInformation.LE, 
-                //    newDetector.eyesInformation.RE, cvScalar(0,255,0), 4);
-            }
-            else send_msg(pamh,gettext("Keep proper distance with the camera."));
-            
+			newWebcamImagePaint.paintCyclops(queryImage, 
+					newDetector.eyesInformation.LE, newDetector.eyesInformation.RE);
+			newWebcamImagePaint.paintEllipse(queryImage, 
+					newDetector.eyesInformation.LE, newDetector.eyesInformation.RE);
 
-            if(enableX == 1) 
-            {
-                processEvent(displayScreen, window, width, height, queryImage, s);
-                while(XPending(displayScreen))
-                {
-                        XEvent event;
-                        XNextEvent(displayScreen, &event);
-                        if(event.type == ClientMessage && event.xclient.data.l[0] == wmDeleteMessage)
-                        {
-                                send_msg(pamh, (char*)"Shutting down now!");
-                                XDestroyWindow(displayScreen, window);
-                                XCloseDisplay(displayScreen);
-                                return PAM_AUTHINFO_UNAVAIL;
-                        }
-                }
-            }
+			//  cvLine(queryImage, newDetector.eyesInformation.LE, 
+			//    newDetector.eyesInformation.RE, cvScalar(0,255,0), 4);
+		}
+		else send_msg(pamh,gettext("Keep proper distance with the camera."));
 
-            writeImageToMemory(queryImage, shared);
-            cvReleaseImage(&queryImage);
-        }
+
+		if(enableX == 1) 
+		{
+			processEvent(displayScreen, window, width, height, queryImage, s);
+			while(XPending(displayScreen))
+			{
+				XEvent event;
+				XNextEvent(displayScreen, &event);
+				if(event.type == ClientMessage && event.xclient.data.l[0] == wmDeleteMessage)
+				{
+					send_msg(pamh, (char*)"Shutting down now!");
+					XDestroyWindow(displayScreen, window);
+					XCloseDisplay(displayScreen);
+					return PAM_AUTHINFO_UNAVAIL;
+				}
+			}
+		}
+
+		IplImage *scaledImage = cvCreateImage(cvSize(IMAGE_WIDTH,
+					IMAGE_HEIGHT), 8, 3);
+		cvResize(queryImage, scaledImage, CV_INTER_LINEAR);
+		writeImageToMemory(scaledImage, shared);
+		cvReleaseImage(&scaledImage);
+	}
         else send_msg(pamh, gettext("Unable query image from your webcam."));
     }
     
