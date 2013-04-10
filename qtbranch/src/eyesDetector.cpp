@@ -155,7 +155,7 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
                     eyesInformation.LE.x = xCordinate;
                     eyesInformation.LE.y = yCordinate;
 
-#ifdef PFA_GEN_STATS
+#ifdef PFA_IMAGE_MANGLE
                     cvCircle(fullImage, cvPoint(eyesInformation.LE.x,eyesInformation.LE.y), 
                         4, CV_RGB(0,255,0), 1, 8, 0);
 #endif
@@ -167,7 +167,7 @@ void eyesDetector::runEyesDetector(IplImage* input, IplImage* fullImage, CvPoint
                     eyesInformation.RE.x = xCordinate;
                     eyesInformation.RE.y = yCordinate;
 
-#ifdef PFA_GEN_STATS
+#ifdef PFA_IMAGE_MANGLE
                     cvCircle( fullImage, cvPoint(eyesInformation.RE.x,eyesInformation.RE.y), 
                       4, CV_RGB(0,255,0), 1, 8, 0);
 #endif

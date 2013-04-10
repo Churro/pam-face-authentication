@@ -119,7 +119,7 @@ void faceDetector::runFaceDetector(IplImage* input)
                fp2 = faceInformation.RB;
              */
         }
-#ifdef PFA_GEN_STATS
+#ifdef PFA_IMAGE_MANGLE
         else
             cvRectangle(input, faceInformation.LT, cvPoint(input->width, input->height), CV_RGB(0,255,0), 3, 8, 0);
 #endif
@@ -146,7 +146,7 @@ IplImage* faceDetector::clipDetectedFace(IplImage* input)
       cvSize(faceInformation.Width, faceInformation.Height),
       IPL_DEPTH_8U, input->nChannels);
     
-#ifdef PFA_GEN_STATS
+#ifdef PFA_IMAGE_MANGLE
     cvRectangle(input, faceInformation.LT, faceInformation.RB, CV_RGB(255,0,0), 3, 8, 0);
 #endif
 

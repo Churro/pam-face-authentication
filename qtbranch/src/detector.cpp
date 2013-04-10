@@ -332,7 +332,7 @@ int detector::runDetector(IplImage* input)
         + pow(eyesInformation.RE.x - eyesInformation.LE.x, 2));
 
       prevlengthEye_ = eyesInformation.Length;
-#ifdef PFA_GEN_STATS
+#ifdef PFA_IMAGE_MANGLE
       cvLine(input, eyesInformation.LE, eyesInformation.RE, cvScalar(0,255,0), 4);
 #endif
     }
