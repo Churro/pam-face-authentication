@@ -261,39 +261,42 @@ void faceVerifyer::timerEvent(QTimerEvent*)
             return;
         imageReturned++;
 
-
+	int verified = 0;
+        if (newDetector.checkFaceDetected() > 0 ) {
+            faceFound++;
+            IplImage *clippedFace = newDetector.clipFace(&queryImage);
+            verified = newVerifier.verifyFace(clippedFace);
+            if (verified > 0 ) faceVerified++;
+            cvReleaseImage(&clippedFace);
+        }
+#ifdef PFA_GEN_STATS
+            printf("Verified %d, %d, %d (%s)\n", faceVerified, imageReturned, faceFound, verified > 0 ? "Found" : "NotFound");
+#endif
+        QString qs = " ";
+	if ( faceFound) {
+		switch (verified) {
+			case 0:
+				qs = QString(tr("Not Verified %1 / %2 faces in %3 images.").arg(faceVerified).arg(faceFound).arg(imageReturned, 3, 10, QChar(' ')));
+				break;
+			case -1:
+				qs = QString(tr(" Not Trained %1 / %2 faces in %3 images.").arg(faceVerified).arg(faceFound).arg(imageReturned, 3, 10, QChar(' ')));
+				break;
+			case -2:
+				qs = QString(tr(" No Data dir %1 / %2 faces in %3 images.").arg(faceVerified).arg(faceFound).arg(imageReturned, 3, 10, QChar(' ')));
+				break;
+			default:
+				qs = QString(tr("    Verified %1 / %2 faces in %3 images.").arg(faceVerified).arg(faceFound).arg(imageReturned, 3, 10, QChar(' ')));
+				break;
+		}
+	} else {
+		qs = getQString(newDetector.queryMessage());
+	}
+        setIbarText( qs);
         newWebcamImagePaint.paintCyclops(&queryImage, 
                 newDetector.eyesInformation.LE, newDetector.eyesInformation.RE);
         newWebcamImagePaint.paintEllipse(&queryImage, 
                 newDetector.eyesInformation.LE, newDetector.eyesInformation.RE);
 
-        int found = 0;
-        if (newDetector.checkFaceDetected() > 0 ) {
-            faceFound++;
-            IplImage *clippedFace = newDetector.clipFace(&queryImage);
-            found = newVerifier.verifyFace(clippedFace);
-            if (found > 0 ) faceVerified++;
-            cvReleaseImage(&clippedFace);
-        }
-#ifdef PFA_GEN_STATS
-            printf("Verified %d, %d, %d (%s)\n", faceVerified, imageReturned, faceFound, found ? "Found" : "NotFound");
-#endif
-        QString qs = " ";
-        switch (found) {
-            case 0:
-                qs = getQString(newDetector.queryMessage());
-                break;
-            case -1:
-                qs = QString(tr(" Not Trained %1 / %2 faces in %3 images.").arg(faceVerified).arg(faceFound).arg(imageReturned, 3, 10, QChar(' ')));
-                break;
-            case -2:
-                qs = QString(tr(" No Data dir %1 / %2 faces in %3 images.").arg(faceVerified).arg(faceFound).arg(imageReturned, 3, 10, QChar(' ')));
-                break;
-            default:
-                qs = QString(tr("    Verified %1 / %2 faces in %3 images.").arg(faceVerified).arg(faceFound).arg(imageReturned, 3, 10, QChar(' ')));
-                break;
-        }
-        setIbarText( qs);
         QImage* qm = QImageIplImageCvt(&queryImage);
 
         setQImageWebcam(qm);
